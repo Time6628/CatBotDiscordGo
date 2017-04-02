@@ -7,6 +7,9 @@ import (
 	"flag"
 	"time"
 	"regexp"
+	"net/http"
+	"encoding/json"
+	"strconv"
 )
 
 func init() {
@@ -16,6 +19,7 @@ func init() {
 
 var token string
 var BotID string
+var httpClient = http.Client{Timeout: time.Second * 10}
 
 func main()  {
 	go forever()
@@ -42,7 +46,6 @@ func main()  {
 	if err != nil {
 		fmt.Println("Could not open discord session: ", err)
 	}
-
 	fmt.Println("CatBot is now running.  Press CTRL-C to exit.")
 	select {}
 }
@@ -61,18 +64,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	g, _ := s.Guild(d.GuildID)
 	member, _ := s.GuildMember(g.ID, m.Author.ID)
 	roles := member.Roles
-	//groles := g.Roles
-
-	/*
-	defperm := 0
-	for i := 0; i < len(groles); i++ {
-		ro := groles[i]
-		if ro.Position == 0 {
-			defperm = ro.Permissions
-		}
-	}*/
-	//fmt.Println("User permissions: ", adminperm)
-	//fmt.Println("Admin perm:", admin)
 
 	c := strings.ToLower(m.Content)
 
@@ -172,6 +163,43 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	} else if strings.HasPrefix(c, "!donationhelp") {
 		s.ChannelMessageSend(m.ChannelID,"If you don't have a rank or perk you purchased please make a forum post here: http://kkmc.info/2du3U2l")
 		removeLater(s, m.Message)
+	} else if strings.HasPrefix(c, "!cat") {
+		fmt.Println(time.Now())
+		j := CatResponse{}
+		cc := strings.TrimPrefix(c, "!cat ")
+		if i, err := strconv.ParseInt(cc, 10, 64); err != nil {
+			getJson("http://random.cat/meow", &j)
+			s.ChannelMessageSend(d.ID, j.URL)
+			fmt.Println(time.Now())
+		} else {
+			if i > 15 || i < 0 {
+				i = 15
+			}
+			e := ""
+			for b := int64(0); b < i; b++ {
+				getJson("http://random.cat/meow", &j)
+				e = e + j.URL + " "
+			}
+			s.ChannelMessageSend(d.ID, e)
+			fmt.Println(time.Now())
+		}
+	} else if strings.HasPrefix(c, "!snek") {
+		j := CatResponse{}
+		cc := strings.TrimPrefix(c, "!snek ")
+		if i, err := strconv.ParseInt(cc, 10, 64); err != nil {
+			getJson("http://fur.im/snek/snek.php", &j)
+			s.ChannelMessageSend(d.ID, j.URL)
+		} else {
+			if i > 15 || i < 0 {
+				i = 15
+			}
+			e := ""
+			for b := int64(0); b < i; b++ {
+				getJson("http://fur.im/snek/snek.php", &j)
+				e = e + j.URL + " "
+			}
+			s.ChannelMessageSend(d.ID, e)
+		}
 	}
 
 }
@@ -191,13 +219,26 @@ func alreadyMuted(id string, channel *discordgo.Channel) (b bool) {
 			b = permission.Deny == discordgo.PermissionSendMessages
 		}
 	}
-	//fmt.Println("user perms: ", permissions)
-	//fmt.Println("send message perms: ", discordgo.PermissionSendMessages)
-	return //if the user's permission in that channel are already lower then SendMessages, they are muted.
+	return
 }
 
 func removeLater(s *discordgo.Session, m *discordgo.Message) {
 	timer := time.NewTimer(time.Second * 5)
 	<- timer.C
 	s.ChannelMessageDelete(m.ChannelID, m.ID)
+}
+
+
+//structs
+type CatResponse struct {
+	URL string `json:"file"`
+}
+
+func getJson(url string, target interface{}) error {
+	resp, err := httpClient.Get(url)
+	if err != nil {
+		panic(err.Error())
+	}
+	defer resp.Body.Close()
+	return json.NewDecoder(resp.Body).Decode(target)
 }
