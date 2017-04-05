@@ -200,9 +200,74 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			}
 			s.ChannelMessageSend(d.ID, e)
 		}
+	} else if strings.HasPrefix(c, "!broom") || strings.HasPrefix(c, "!dontbeabroom") {
+		s.ChannelMessageSend(d.ID, "https://youtu.be/sSPIMgtcQnU")
+	} else if strings.HasPrefix(c, "!rick") {
+		s.ChannelMessageSend(d.ID, "http://kkmc.info/1LWYru2")
+	} else if strings.HasPrefix(c, "!clear") {
+		if len(c) <= 7  || canManageMessage(s, m.Author, d) {
+			return
+		}
+		args := strings.Split(strings.Replace(c, "!clear ", "", -1), " ")
+		if len(args) == 0 {
+			s.ChannelMessageSend(d.ID, "Invalid parameters")
+			return
+		} else if len(args) == 2 {
+			if i, err := strconv.ParseInt(args[0], 10, 64); err != nil {
+				clearUserChat(int(i), d, s, args[1])
+				removeLater(s, m.Message)
+			}
+		} else if len(args) == 1 {
+			if i, err := strconv.ParseInt(args[0], 10, 64); err != nil {
+				clearChannelChat(int(i), d, s)
+				removeLater(s, m.Message)
+			}
+		}
 	}
 
 }
+func canManageMessage(session *discordgo.Session, user *discordgo.User, channel *discordgo.Channel) bool {
+	uPerms, _ := session.UserChannelPermissions(user.ID, channel.ID)
+	if (uPerms&discordgo.PermissionManageMessages) == discordgo.PermissionManageMessages {
+		return true
+	}
+	return false
+}
+
+func clearChannelChat(i int, channel *discordgo.Channel, session *discordgo.Session) {
+	messages, err := session.ChannelMessages(channel.ID, i, "", "")
+	if err != nil {
+		session.ChannelMessageSend(channel.ID, "Could not get messages.")
+		return
+	}
+	todelete := []string{}
+	for i := 0; i < len(messages); i++ {
+		message := messages[i]
+		todelete = append(todelete, message.ID)
+	}
+	session.ChannelMessagesBulkDelete(channel.ID, todelete)
+	m, _ := session.ChannelMessageSend(channel.ID, "Messages removed in channel " + channel.Name)
+	removeLater(session, m)
+}
+
+func clearUserChat(i int, channel *discordgo.Channel, session *discordgo.Session, id string) {
+	messages, err := session.ChannelMessages(channel.ID, i, "", "")
+	if err != nil {
+		session.ChannelMessageSend(channel.ID, "Could not get messages.")
+		return
+	}
+	todelete := []string{}
+	for i := 0; i < len(messages); i++ {
+		message := messages[i]
+		if message.Author.ID == id {
+			todelete = append(todelete, message.ID)
+		}
+	}
+	session.ChannelMessagesBulkDelete(channel.ID, todelete)
+	m, _ := session.ChannelMessageSend(channel.ID, "Messages removed for user <@" + id + "> in channel " + channel.Name)
+	removeLater(session, m)
+}
+
 func removeLaterBulk(session *discordgo.Session, messages []*discordgo.Message) {
 	for _, z := range messages {
 		timer := time.NewTimer(time.Second * 5)
