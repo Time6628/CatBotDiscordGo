@@ -65,6 +65,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	member, _ := s.GuildMember(g.ID, m.Author.ID)
 	roles := member.Roles
 
+	if d.IsPrivate {
+		s.ChannelMessageSend(d.ID, "Hello! I am CatBot 2.0!")
+		return
+	}
+
 	c := strings.ToLower(m.Content)
 
 	filters := [...]*regexp.Regexp{
@@ -209,29 +214,67 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		fmt.Println("clearing messages...")
-		args := strings.Split(strings.Replace(c, "!dclear ", "", -1), " ")
+		args := strings.Split(strings.Replace(c, "!clear ", "", -1), " ")
 		if len(args) == 0 {
 			s.ChannelMessageSend(d.ID, "Invalid parameters")
 			fmt.Println("Invalid clear paramters...")
 			return
 		} else if len(args) == 2 {
 			fmt.Println("clearing user messages...")
-			if i, err := strconv.ParseInt(args[1], 10, 64); err == nil {
+			if i, err := strconv.ParseInt(args[1], 10, 64); err != nil {
 				clearUserChat(int(i), d, s, args[0])
 				removeLater(s, m.Message)
 				return
 			}
 		} else if len(args) == 1 {
 			fmt.Println("clearing messages...")
-			if i, err := strconv.ParseInt(args[0], 10, 64); err == nil {
+			if i, err := strconv.ParseInt(args[0], 10, 64); err != nil {
 				clearChannelChat(int(i), d, s)
 				removeLater(s, m.Message)
 				return
 			}
 		}
+	} else if strings.HasPrefix(c, "!info") {
+		fmt.Println("Sending info...")
+		embed := discordgo.MessageEmbed{
+			Title: "Info",
+			Color: 10181046,
+			Description: "A rewrite of KookyKraftMC discord bot, written in Go.",
+			URL: "https://github.com/Time6628/CatBotDiscordGo",
+			Fields: []*discordgo.MessageEmbedField{
+				{Name: "Servers", Value: strconv.Itoa(len(s.State.Guilds)), Inline: true},
+				{Name: "Users", Value: strconv.Itoa(countUsers(s.State.Guilds)), Inline: true},
+				{Name: "Channels", Value: strconv.Itoa(countChannels(s.State.Guilds)), Inline: true},
+			},
+		}
+		_, err := s.ChannelMessageSendEmbed(d.ID, &embed)
+		if err != nil {
+			s.ChannelMessageSend(d.ID, formatError(err))
+		}
+
 	}
 
 }
+func countChannels(guilds []*discordgo.Guild) (channels int) {
+	for i := 0; i < len(guilds); i++ {
+		channels = len(guilds[i].Channels) + channels
+	}
+	return
+}
+
+func countUsers(guilds []*discordgo.Guild) (users int) {
+	for i := 0; i < len(guilds); i++ {
+		users = guilds[i].MemberCount + users
+	}
+	return
+}
+
+
+
+func formatError(err error) string {
+	return "```" + err.Error() + "```"
+}
+
 func canManageMessage(session *discordgo.Session, user *discordgo.User, channel *discordgo.Channel) bool {
 	uPerms, _ := session.UserChannelPermissions(user.ID, channel.ID)
 	if (uPerms&discordgo.PermissionManageMessages) == discordgo.PermissionManageMessages {

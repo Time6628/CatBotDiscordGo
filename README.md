@@ -1,2 +1,2 @@
 # CatBotDiscordGo
-A rewrite of KookyKraftMC discord bot, written in Golang.
+A rewrite of the KookyKraftMC discord bot, written in Golang.
