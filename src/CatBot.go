@@ -205,22 +205,28 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	} else if strings.HasPrefix(c, "!rick") {
 		s.ChannelMessageSend(d.ID, "http://kkmc.info/1LWYru2")
 	} else if strings.HasPrefix(c, "!clear") {
-		if len(c) <= 7  || canManageMessage(s, m.Author, d) {
+		if len(c) < 7  || !canManageMessage(s, m.Author, d) {
 			return
 		}
-		args := strings.Split(strings.Replace(c, "!clear ", "", -1), " ")
+		fmt.Println("clearing messages...")
+		args := strings.Split(strings.Replace(c, "!dclear ", "", -1), " ")
 		if len(args) == 0 {
 			s.ChannelMessageSend(d.ID, "Invalid parameters")
+			fmt.Println("Invalid clear paramters...")
 			return
 		} else if len(args) == 2 {
-			if i, err := strconv.ParseInt(args[0], 10, 64); err != nil {
-				clearUserChat(int(i), d, s, args[1])
+			fmt.Println("clearing user messages...")
+			if i, err := strconv.ParseInt(args[1], 10, 64); err == nil {
+				clearUserChat(int(i), d, s, args[0])
 				removeLater(s, m.Message)
+				return
 			}
 		} else if len(args) == 1 {
-			if i, err := strconv.ParseInt(args[0], 10, 64); err != nil {
+			fmt.Println("clearing messages...")
+			if i, err := strconv.ParseInt(args[0], 10, 64); err == nil {
 				clearChannelChat(int(i), d, s)
 				removeLater(s, m.Message)
+				return
 			}
 		}
 	}
@@ -254,6 +260,7 @@ func clearUserChat(i int, channel *discordgo.Channel, session *discordgo.Session
 	messages, err := session.ChannelMessages(channel.ID, i, "", "")
 	if err != nil {
 		session.ChannelMessageSend(channel.ID, "Could not get messages.")
+		session.ChannelMessageSend(channel.ID, "```" + err.Error() + "```")
 		return
 	}
 	todelete := []string{}
