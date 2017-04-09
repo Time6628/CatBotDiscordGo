@@ -7,9 +7,11 @@ import (
 	"flag"
 	"time"
 	"regexp"
-	"net/http"
 	"encoding/json"
 	"strconv"
+	"github.com/valyala/fasthttp"
+	"errors"
+	"bytes"
 )
 
 func init() {
@@ -19,7 +21,7 @@ func init() {
 
 var token string
 var BotID string
-var httpClient = http.Client{Timeout: time.Second * 10}
+var client = fasthttp.Client{ReadTimeout: time.Second * 10, WriteTimeout: time.Second * 10}
 
 func main()  {
 	go forever()
@@ -50,9 +52,7 @@ func main()  {
 	select {}
 }
 
-func forever() {
-
-}
+func forever() {}
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
@@ -251,9 +251,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if err != nil {
 			s.ChannelMessageSend(d.ID, formatError(err))
 		}
-
 	}
-
 }
 func countChannels(guilds []*discordgo.Guild) (channels int) {
 	for i := 0; i < len(guilds); i++ {
@@ -350,10 +348,18 @@ type CatResponse struct {
 }
 
 func getJson(url string, target interface{}) error {
+	stat, body, err := client.Get(nil, url)
+	if err != nil || stat != 200 {
+		return errors.New("Could not obtain json response")
+	}
+	return json.NewDecoder(bytes.NewReader(body)).Decode(target)
+
+	/*
 	resp, err := httpClient.Get(url)
 	if err != nil {
 		panic(err.Error())
 	}
 	defer resp.Body.Close()
 	return json.NewDecoder(resp.Body).Decode(target)
+	*/
 }
