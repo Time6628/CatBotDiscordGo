@@ -12,6 +12,8 @@ import (
 	"github.com/valyala/fasthttp"
 	"errors"
 	"bytes"
+	"github.com/Time6628/OpenTDB-Go"
+	"math/rand"
 )
 
 func init() {
@@ -19,13 +21,18 @@ func init() {
 	flag.Parse()
 }
 
-var token string
-var BotID string
-var client = fasthttp.Client{ReadTimeout: time.Second * 10, WriteTimeout: time.Second * 10}
+var (
+	token string
+	BotID string
+	client = fasthttp.Client{ReadTimeout: time.Second * 10, WriteTimeout: time.Second * 10}
+	trivia = OpenTDB_Go.New(client)
+	nofilter []string
+)
 
 func main()  {
 	go forever()
 	fmt.Println("Starting Catbot 2.0")
+
 	if token == "" {
 		fmt.Println("No token provided. Please run: catbot -t <bot token>")
 		return
@@ -72,41 +79,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	c := strings.ToLower(m.Content)
 
-	filters := [...]*regexp.Regexp{
-		regexp.MustCompile("dick"),
-		regexp.MustCompile("fuck"),
-		regexp.MustCompile("penis"),
-		regexp.MustCompile("vagina"),
-		regexp.MustCompile("fag"),
-		regexp.MustCompile("\\brape"),
-		regexp.MustCompile("slut"),
-		regexp.MustCompile("slut"),
-		regexp.MustCompile("hitler"),
-		regexp.MustCompile("\\b(jack)?ass(holes?|lick|wipe)?\\b"),
-		regexp.MustCompile("arse(hole)?"),
-		regexp.MustCompile("bitch"),
-		regexp.MustCompile("whore"),
-		regexp.MustCompile("nigg(er|a)"),
-		regexp.MustCompile("bastard"),
-		regexp.MustCompile("bea?stiality"),
-		regexp.MustCompile("negro"),
-		regexp.MustCompile("retard"),
-		regexp.MustCompile("\\bcum\\b"),
-		regexp.MustCompile("cunt"),
-		regexp.MustCompile("dildo"),
-		regexp.MustCompile("bollocks?"),
-		regexp.MustCompile("\\bwank"),
-		regexp.MustCompile("jizz"),
-		regexp.MustCompile("piss"),
-	}
-
+	filters := []*regexp.Regexp{regexp.MustCompile("dick"), regexp.MustCompile("fuck"), regexp.MustCompile("penis"), regexp.MustCompile("vagina"), regexp.MustCompile("fag"), regexp.MustCompile("\\brape"), regexp.MustCompile("slut"), regexp.MustCompile("slut"), regexp.MustCompile("hitler"), regexp.MustCompile("\\b(jack)?ass(holes?|lick|wipe)?\\b"), regexp.MustCompile("arse(hole)?"), regexp.MustCompile("bitch"), regexp.MustCompile("whore"), regexp.MustCompile("nigg(er|a)"), regexp.MustCompile("bastard"), regexp.MustCompile("bea?stiality"), regexp.MustCompile("negro"), regexp.MustCompile("retard"), regexp.MustCompile("\\bcum\\b"), regexp.MustCompile("cunt"), regexp.MustCompile("dildo"), regexp.MustCompile("bollocks?"), regexp.MustCompile("\\bwank"), regexp.MustCompile("jizz"), regexp.MustCompile("piss"),}
 	filter := false
-	for i := 0; i < len(filters); i++ {
-		filt := filters[i]
-		if filt.MatchString(c) {
-			filter = true
-		}
-	}
 
 
 	admin := false
@@ -117,11 +91,40 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	}
 
-	if filter && !admin {
+	if filterChannel(d.ID) {
+		for i := 0; i < len(filters); i++ {
+			filt := filters[i]
+			if filt.MatchString(c) {
+				filter = true
+			}
+		}
+	}
+
+	if filter {
 		s.ChannelMessageDelete(m.ChannelID, m.ID)
 		rm, _ := s.ChannelMessageSend(m.ChannelID, "Messaged removed from <@" + m.Author.ID + ">.")
 		removeLater(s, rm)
 		return
+	} else if strings.HasPrefix(c, "!gremovefilter") {
+		if filterChannel(d.ID) == false {
+			s.ChannelMessageSend(d.ID, "Channel already unfiltered.")
+		} else {
+			nofilter = append(nofilter, d.ID)
+			s.ChannelMessageSend(d.ID, "Channel is no longer filtered.")
+		}
+	} else if strings.HasPrefix(c, "!genablefilter") {
+		if filterChannel(d.ID) == false {
+			toremove := -1
+			for i := range nofilter {
+				if nofilter[i] == d.ID {
+					toremove = i
+				}
+			}
+			nofilter = append(nofilter[:toremove], nofilter[toremove+1:]...)
+			s.ChannelMessageSend(d.ID, "Channel is now filtered.")
+		} else {
+			s.ChannelMessageSend(d.ID, "Channel is already filtered.")
+		}
 	} else if strings.HasPrefix(c, "!catbot") {
 		s.ChannelMessageSend(m.ChannelID, "Meow meow beep boop! I am catbot 2.0!")
 		return
@@ -251,11 +254,62 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if err != nil {
 			s.ChannelMessageSend(d.ID, formatError(err))
 		}
+	} else if strings.HasPrefix(c, "!trivia") {
+		fmt.Println("Getting trivia")
+		if question, err := trivia.Getter.GetTrivia(1); err == nil {
+			a := append(question.Results[0].IncorrectAnswer, question.Results[0].CorrectAnswer)
+			for i := range a {
+				j := rand.Intn(i + 1)
+				a[i], a[j] = a[j], a[i]
+			}
+			embedanswers := []*discordgo.MessageEmbedField{}
+			if len(a) == 2 {
+				embedanswers = []*discordgo.MessageEmbedField{
+					{Name: "A", Value: a[0], Inline: true},
+					{Name: "B", Value: a[1], Inline: true},
+				}
+			} else if len(a) == 4 {
+				embedanswers = []*discordgo.MessageEmbedField{
+					{Name: "A", Value: a[0], Inline: true},
+					{Name: "B", Value: a[1], Inline: true},
+					{Name: "C", Value: a[2], Inline: true},
+					{Name: "D", Value: a[3], Inline: true},
+				}
+			}
+			embed := discordgo.MessageEmbed{
+				Title: "Trivia",
+				Color: 10181046,
+				Description: question.Results[0].Question,
+				URL: "https://opentdb.com/",
+				Fields: embedanswers,
+			}
+			_, err := s.ChannelMessageSendEmbed(d.ID, &embed)
+			if err != nil {
+				s.ChannelMessageSend(d.ID, formatError(err))
+			}
+			sendLater(s, d.ID, "The correct answer was: " + question.Results[0].CorrectAnswer)
+		} else if err != nil {
+			s.ChannelMessageSend(d.ID, formatError(err))
+		}
 	}
 }
 func countChannels(guilds []*discordgo.Guild) (channels int) {
 	for i := 0; i < len(guilds); i++ {
 		channels = len(guilds[i].Channels) + channels
+	}
+	return
+}
+
+
+func filterChannel(id string) (b bool) {
+	b = true
+	//for all the channels without filters,
+	for i := 0; i < len(nofilter); i++ {
+		//see if nofilter contains the channel id
+		if nofilter[i] == id {
+			b = false
+			return
+		}
 	}
 	return
 }
@@ -266,8 +320,6 @@ func countUsers(guilds []*discordgo.Guild) (users int) {
 	}
 	return
 }
-
-
 
 func formatError(err error) string {
 	return "```" + err.Error() + "```"
@@ -341,6 +393,11 @@ func removeLater(s *discordgo.Session, m *discordgo.Message) {
 	s.ChannelMessageDelete(m.ChannelID, m.ID)
 }
 
+func sendLater(s *discordgo.Session, cid string, msg string) {
+	timer := time.NewTimer(time.Minute * 1)
+	<- timer.C
+	s.ChannelMessageSend(cid, msg)
+}
 
 //structs
 type CatResponse struct {
