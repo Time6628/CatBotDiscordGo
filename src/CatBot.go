@@ -68,14 +68,13 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	d, _ := s.Channel(m.ChannelID)
+	if d.IsPrivate {
+		return
+	}
+
 	g, _ := s.Guild(d.GuildID)
 	member, _ := s.GuildMember(g.ID, m.Author.ID)
 	roles := member.Roles
-
-	if d.IsPrivate {
-		s.ChannelMessageSend(d.ID, "Hello! I am CatBot 2.0!")
-		return
-	}
 
 	c := strings.ToLower(m.Content)
 
@@ -105,14 +104,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		rm, _ := s.ChannelMessageSend(m.ChannelID, "Messaged removed from <@" + m.Author.ID + ">.")
 		removeLater(s, rm)
 		return
-	} else if strings.HasPrefix(c, "!gremovefilter") {
+	} else if strings.HasPrefix(c, "!removefilter") {
 		if filterChannel(d.ID) == false {
 			s.ChannelMessageSend(d.ID, "Channel already unfiltered.")
 		} else {
 			nofilter = append(nofilter, d.ID)
 			s.ChannelMessageSend(d.ID, "Channel is no longer filtered.")
 		}
-	} else if strings.HasPrefix(c, "!genablefilter") {
+	} else if strings.HasPrefix(c, "!enablefilter") {
 		if filterChannel(d.ID) == false {
 			toremove := -1
 			for i := range nofilter {
@@ -151,7 +150,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	} else if strings.HasPrefix(c, "!allmute") && admin {
 		cc := strings.TrimPrefix(c, "!allmute ")
-		arg := strings.Split(cc, ":")
+		arg := strings.Split(cc, " ")
 		if !strings.Contains(cc, "@") {
 			s.ChannelMessageSend(d.ID, "Please provide a user to mute!")
 			return
