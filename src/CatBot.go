@@ -63,17 +63,26 @@ func forever() {}
 
 func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
+
 	if m.Author.ID == BotID {
 		return
 	}
 
-	d, _ := s.Channel(m.ChannelID)
-	if d.IsPrivate {
+	d, err := s.Channel(m.ChannelID)
+	if err != nil {
 		return
 	}
 
-	g, _ := s.Guild(d.GuildID)
-	member, _ := s.GuildMember(g.ID, m.Author.ID)
+	g, err := s.Guild(d.GuildID)
+	if err != nil {
+		return
+	}
+
+	member, err := s.GuildMember(g.ID, m.Author.ID)
+	if err != nil {
+		return
+	}
+
 	roles := member.Roles
 
 	c := strings.ToLower(m.Content)
@@ -106,10 +115,12 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	} else if strings.HasPrefix(c, "!removefilter") {
 		if filterChannel(d.ID) == false {
-			s.ChannelMessageSend(d.ID, "Channel already unfiltered.")
+			e, _ := s.ChannelMessageSend(d.ID, "Channel already unfiltered.")
+			removeLaterBulk(s, []*discordgo.Message{e, m.Message})
 		} else {
 			nofilter = append(nofilter, d.ID)
-			s.ChannelMessageSend(d.ID, "Channel is no longer filtered.")
+			e, _ := s.ChannelMessageSend(d.ID, "Channel is no longer filtered.")
+			removeLaterBulk(s, []*discordgo.Message{e, m.Message})
 		}
 	} else if strings.HasPrefix(c, "!enablefilter") {
 		if filterChannel(d.ID) == false {
@@ -120,9 +131,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 				}
 			}
 			nofilter = append(nofilter[:toremove], nofilter[toremove+1:]...)
-			s.ChannelMessageSend(d.ID, "Channel is now filtered.")
+			e, _ := s.ChannelMessageSend(d.ID, "Channel is now filtered.")
+			removeLaterBulk(s, []*discordgo.Message{e, m.Message})
 		} else {
-			s.ChannelMessageSend(d.ID, "Channel is already filtered.")
+			e, _ := s.ChannelMessageSend(d.ID, "Channel is already filtered.")
+			removeLaterBulk(s, []*discordgo.Message{e, m.Message})
 		}
 	} else if strings.HasPrefix(c, "!catbot") {
 		s.ChannelMessageSend(m.ChannelID, "Meow meow beep boop! I am catbot 2.0!")
@@ -222,15 +235,15 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			fmt.Println("Invalid clear paramters...")
 			return
 		} else if len(args) == 2 {
-			fmt.Println("clearing user messages...")
-			if i, err := strconv.ParseInt(args[1], 10, 64); err != nil {
+			fmt.Println("clearing messages from " + d.Name + " for user " + member.User.Username)
+			if i, err := strconv.ParseInt(args[1], 10, 64); err == nil {
 				clearUserChat(int(i), d, s, args[0])
 				removeLater(s, m.Message)
 				return
 			}
 		} else if len(args) == 1 {
-			fmt.Println("clearing messages...")
-			if i, err := strconv.ParseInt(args[0], 10, 64); err != nil {
+			fmt.Println("clearing " + args[0] + " messages from " + d.Name + " for user " + member.User.Username)
+			if i, err := strconv.ParseInt(args[0], 10, 64); err == nil {
 				clearChannelChat(int(i), d, s)
 				removeLater(s, m.Message)
 				return
@@ -333,9 +346,11 @@ func canManageMessage(session *discordgo.Session, user *discordgo.User, channel 
 }
 
 func clearChannelChat(i int, channel *discordgo.Channel, session *discordgo.Session) {
+	fmt.Println("Clearing channel messages...")
 	messages, err := session.ChannelMessages(channel.ID, i, "", "")
 	if err != nil {
 		session.ChannelMessageSend(channel.ID, "Could not get messages.")
+		session.ChannelMessageSend(channel.ID, "```" + err.Error() + "```")
 		return
 	}
 	todelete := []string{}
@@ -344,7 +359,11 @@ func clearChannelChat(i int, channel *discordgo.Channel, session *discordgo.Sess
 		todelete = append(todelete, message.ID)
 	}
 	session.ChannelMessagesBulkDelete(channel.ID, todelete)
-	m, _ := session.ChannelMessageSend(channel.ID, "Messages removed in channel " + channel.Name)
+	m, err := session.ChannelMessageSend(channel.ID, "Messages removed in channel " + channel.Name)
+	if err != nil {
+		session.ChannelMessageSend(channel.ID, "```" + err.Error() + "```")
+		return
+	}
 	removeLater(session, m)
 }
 
