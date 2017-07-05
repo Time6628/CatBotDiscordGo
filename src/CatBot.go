@@ -113,7 +113,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		rm, _ := s.ChannelMessageSend(m.ChannelID, "Messaged removed from <@" + m.Author.ID + ">.")
 		removeLater(s, rm)
 		return
-	} else if strings.HasPrefix(c, "!removefilter") {
+	} else if strings.HasPrefix(c, "!removefilter") && admin {
 		if filterChannel(d.ID) == false {
 			e, _ := s.ChannelMessageSend(d.ID, "Channel already unfiltered.")
 			removeLaterBulk(s, []*discordgo.Message{e, m.Message})
@@ -122,7 +122,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			e, _ := s.ChannelMessageSend(d.ID, "Channel is no longer filtered.")
 			removeLaterBulk(s, []*discordgo.Message{e, m.Message})
 		}
-	} else if strings.HasPrefix(c, "!enablefilter") {
+	} else if strings.HasPrefix(c, "!enablefilter") && admin {
 		if filterChannel(d.ID) == false {
 			toremove := -1
 			for i := range nofilter {
@@ -224,6 +224,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		s.ChannelMessageSend(d.ID, "https://youtu.be/sSPIMgtcQnU")
 	} else if strings.HasPrefix(c, "!rick") {
 		s.ChannelMessageSend(d.ID, "http://kkmc.info/1LWYru2")
+	} else if strings.HasPrefix(c, "!vktrs") {
+		s.ChannelMessageSend(d.ID, "https://www.youtube.com/watch?v=Iwuy4hHO3YQ")
 	} else if strings.HasPrefix(c, "!clear") {
 		if len(c) < 7  || !canManageMessage(s, m.Author, d) {
 			return
@@ -277,11 +279,15 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			embedanswers := []*discordgo.MessageEmbedField{}
 			if len(a) == 2 {
 				embedanswers = []*discordgo.MessageEmbedField{
+					{Name: "Category", Value: question.Results[0].Category, Inline: false},
+					{Name: "Difficulty", Value: question.Results[0].Difficulty, Inline: false},
 					{Name: "A", Value: a[0], Inline: true},
 					{Name: "B", Value: a[1], Inline: true},
 				}
 			} else if len(a) == 4 {
 				embedanswers = []*discordgo.MessageEmbedField{
+					{Name: "Category", Value: question.Results[0].Category, Inline: false},
+					{Name: "Difficulty", Value: question.Results[0].Difficulty, Inline: false},
 					{Name: "A", Value: a[0], Inline: true},
 					{Name: "B", Value: a[1], Inline: true},
 					{Name: "C", Value: a[2], Inline: true},
@@ -305,13 +311,13 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	}
 }
+
 func countChannels(guilds []*discordgo.Guild) (channels int) {
 	for i := 0; i < len(guilds); i++ {
 		channels = len(guilds[i].Channels) + channels
 	}
 	return
 }
-
 
 func filterChannel(id string) (b bool) {
 	b = true
