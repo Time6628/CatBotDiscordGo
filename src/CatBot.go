@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"github.com/Time6628/OpenTDB-Go"
 	"math/rand"
+	"html"
 )
 
 func init() {
@@ -27,6 +28,7 @@ var (
 	client = fasthttp.Client{ReadTimeout: time.Second * 10, WriteTimeout: time.Second * 10}
 	trivia = OpenTDB_Go.New(client)
 	nofilter []string
+	triviaRunning = false
 )
 
 func main()  {
@@ -269,47 +271,60 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			s.ChannelMessageSend(d.ID, formatError(err))
 		}
 	} else if strings.HasPrefix(c, "!trivia") {
-		fmt.Println("Getting trivia")
-		if question, err := trivia.Getter.GetTrivia(1); err == nil {
-			a := append(question.Results[0].IncorrectAnswer, question.Results[0].CorrectAnswer)
-			for i := range a {
-				j := rand.Intn(i + 1)
-				a[i], a[j] = a[j], a[i]
-			}
-			embedanswers := []*discordgo.MessageEmbedField{}
-			if len(a) == 2 {
-				embedanswers = []*discordgo.MessageEmbedField{
-					{Name: "Category", Value: question.Results[0].Category, Inline: false},
-					{Name: "Difficulty", Value: question.Results[0].Difficulty, Inline: false},
-					{Name: "A", Value: a[0], Inline: true},
-					{Name: "B", Value: a[1], Inline: true},
+		if triviaRunning {
+			s.ChannelMessageSend(d.ID, "Trivia already running.")
+		} else {
+			fmt.Println("Getting trivia")
+			if question, err := trivia.Getter.GetTrivia(1); err == nil {
+				triviaRunning = true
+				a := append(question.Results[0].IncorrectAnswer, question.Results[0].CorrectAnswer)
+				for i := range a {
+					j := rand.Intn(i + 1)
+					a[i], a[j] = a[j], a[i]
 				}
-			} else if len(a) == 4 {
-				embedanswers = []*discordgo.MessageEmbedField{
-					{Name: "Category", Value: question.Results[0].Category, Inline: false},
-					{Name: "Difficulty", Value: question.Results[0].Difficulty, Inline: false},
-					{Name: "A", Value: a[0], Inline: true},
-					{Name: "B", Value: a[1], Inline: true},
-					{Name: "C", Value: a[2], Inline: true},
-					{Name: "D", Value: a[3], Inline: true},
+				embedanswers := []*discordgo.MessageEmbedField{}
+				if len(a) == 2 {
+					embedanswers = []*discordgo.MessageEmbedField{
+						{Name: "Category", Value: question.Results[0].Category, Inline: false},
+						{Name: "Difficulty", Value: question.Results[0].Difficulty, Inline: false},
+						{Name: "A", Value: html.UnescapeString(a[0]), Inline: true},
+						{Name: "B", Value: html.UnescapeString(a[1]), Inline: true},
+					}
+				} else if len(a) == 4 {
+					embedanswers = []*discordgo.MessageEmbedField{
+						{Name: "Category", Value: question.Results[0].Category, Inline: false},
+						{Name: "Difficulty", Value: question.Results[0].Difficulty, Inline: false},
+						{Name: "A", Value: html.UnescapeString(a[0]), Inline: true},
+						{Name: "B", Value: html.UnescapeString(a[1]), Inline: true},
+						{Name: "C", Value: html.UnescapeString(a[2]), Inline: true},
+						{Name: "D", Value: html.UnescapeString(a[3]), Inline: true},
+					}
 				}
-			}
-			embed := discordgo.MessageEmbed{
-				Title: "Trivia",
-				Color: 10181046,
-				Description: question.Results[0].Question,
-				URL: "https://opentdb.com/",
-				Fields: embedanswers,
-			}
-			_, err := s.ChannelMessageSendEmbed(d.ID, &embed)
-			if err != nil {
+				embed := discordgo.MessageEmbed{
+					Title:       "Trivia",
+					Color:       10181046,
+					Description: html.UnescapeString(question.Results[0].Question),
+					URL:         "https://opentdb.com/",
+					Fields:      embedanswers,
+				}
+				_, err := s.ChannelMessageSendEmbed(d.ID, &embed)
+				if err != nil {
+					s.ChannelMessageSend(d.ID, formatError(err))
+				}
+				doLater(func (){
+					s.ChannelMessageSend(d.ID, "The correct answer was: "+html.UnescapeString(question.Results[0].CorrectAnswer))
+					triviaRunning = false
+				})
+			} else if err != nil {
 				s.ChannelMessageSend(d.ID, formatError(err))
 			}
-			sendLater(s, d.ID, "The correct answer was: " + question.Results[0].CorrectAnswer)
-		} else if err != nil {
-			s.ChannelMessageSend(d.ID, formatError(err))
 		}
 	}
+}
+func doLater(i func()) {
+	timer := time.NewTimer(time.Minute * 1)
+	<- timer.C
+	i()
 }
 
 func countChannels(guilds []*discordgo.Guild) (channels int) {
