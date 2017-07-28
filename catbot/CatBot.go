@@ -176,6 +176,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		clearCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message, *discordgo.Member, []string))(s, d, m.Message, member, []string{cmdBits[1], cmdBits[2]})
 	case triviaCmd.Prefix:
 		triviaCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
+	case topicCmd.Prefix:
+		topicCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
 	default:
 		s.ChannelMessageSend(d.ID, "Unknown command.")
 	}
@@ -228,7 +230,7 @@ func canManageMessage(session *discordgo.Session, user *discordgo.User, channel 
 
 func clearChannelChat(i int, channel *discordgo.Channel, session *discordgo.Session) {
 	fmt.Println("Clearing channel messages...")
-	messages, err := session.ChannelMessages(channel.ID, i, "", "")
+	messages, err := session.ChannelMessages(channel.ID, i, "", "", "")
 	if err != nil {
 		session.ChannelMessageSend(channel.ID, "Could not get messages.")
 		session.ChannelMessageSend(channel.ID, "```" + err.Error() + "```")
@@ -249,7 +251,7 @@ func clearChannelChat(i int, channel *discordgo.Channel, session *discordgo.Sess
 }
 
 func clearUserChat(i int, channel *discordgo.Channel, session *discordgo.Session, id string) {
-	messages, err := session.ChannelMessages(channel.ID, i, "", "")
+	messages, err := session.ChannelMessages(channel.ID, i, "", "", "")
 	if err != nil {
 		session.ChannelMessageSend(channel.ID, "Could not get messages.")
 		session.ChannelMessageSend(channel.ID, "```" + err.Error() + "```")

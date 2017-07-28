@@ -209,3 +209,7 @@ func triviaExec(s *discordgo.Session, d *discordgo.Channel) {
 		}
 	}
 }
+
+func topic(s *discordgo.Session, d *discordgo.Channel) {
+	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Description: d.Topic, Title: d.Name, Color: 10181046,})
+}
