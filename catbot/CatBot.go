@@ -49,8 +49,6 @@ func main()  {
 	}
 	dg.AddHandler(messageCreate)
 
-
-
 	BotID = u.ID
 	err = dg.Open()
 	if err != nil {
@@ -123,6 +121,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	cmdBits := strings.Split(c, " ")
 
 	switch cmdBits[0] {
+	case helpCmd.Prefix:
+		helpCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.User, bool))(s, d, m.Author, admin)
 	case removeFilterCmd.Prefix:
 		if !admin {
 			return
@@ -173,7 +173,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if canManageMessage(s, m.Author, d) {
 			return
 		}
-		clearCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message, *discordgo.Member, []string))(s, d, m.Message, member, []string{cmdBits[1], cmdBits[2]})
+		clearCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message, *discordgo.Member, []string))(s, d, m.Message, member, cmdBits)
 	case triviaCmd.Prefix:
 		triviaCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
 	case topicCmd.Prefix:
@@ -181,7 +181,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	default:
 		s.ChannelMessageSend(d.ID, "Unknown command.")
 	}
-	
 }
 func doLater(i func()) {
 	timer := time.NewTimer(time.Minute * 1)

@@ -69,6 +69,7 @@ func mute(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, user
 		rm, _ := s.ChannelMessageSend(m.ChannelID, "User already muted!")
 		removeLaterBulk(s, []*discordgo.Message{rm, m,})
 	}
+	s.UserNoteSet(user_id, "MUTED BY CATBOT")
 }
 
 func allMute(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, user_id string, channels []*discordgo.Channel) {
@@ -88,40 +89,18 @@ func donationHelp(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Messa
 	removeLater(s, m)
 }
 
-func cat(s *discordgo.Session, d *discordgo.Channel, cc string) {
+func cat(s *discordgo.Session, d *discordgo.Channel) {
 	j := CatResponse{}
-	if i, err := strconv.ParseInt(cc, 10, 64); err != nil {
-		getJson("http://random.cat/meow", &j)
-		s.ChannelMessageSend(d.ID, j.URL)
-	} else {
-		if i > 15 || i < 0 {
-			i = 15
-		}
-		e := ""
-		for b := int64(0); b < i; b++ {
-			getJson("http://random.cat/meow", &j)
-			e = e + j.URL + " "
-		}
-		s.ChannelMessageSend(d.ID, e)
-	}
+	getJson("http://random.cat/meow", &j)
+	//s.ChannelMessageSend(d.ID, j.URL)
+	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Color: 10181046, Image: &discordgo.MessageEmbedImage{URL:j.URL}, Title: "Cat", URL: j.URL})
 }
 
-func snek(s *discordgo.Session, d *discordgo.Channel, cc string) {
+func snek(s *discordgo.Session, d *discordgo.Channel) {
 	j := CatResponse{}
-	if i, err := strconv.ParseInt(cc, 10, 64); err != nil {
-		getJson("http://fur.im/snek/snek.php", &j)
-		s.ChannelMessageSend(d.ID, j.URL)
-	} else {
-		if i > 15 || i < 0 {
-			i = 15
-		}
-		e := ""
-		for b := int64(0); b < i; b++ {
-			getJson("http://fur.im/snek/snek.php", &j)
-			e = e + j.URL + " "
-		}
-		s.ChannelMessageSend(d.ID, e)
-	}
+	getJson("http://fur.im/snek/snek.php", &j)
+	//s.ChannelMessageSend(d.ID, j.URL)
+	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Color: 10181046, Image: &discordgo.MessageEmbedImage{URL:j.URL}, Title: "Snek", URL: j.URL})
 }
 
 func broom(s *discordgo.Session, d *discordgo.Channel) {
@@ -144,14 +123,14 @@ func clear(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, mem
 		return
 	} else if len(args) == 2 {
 		fmt.Println("clearing messages from " + d.Name + " for user " + member.User.Username)
-		if i, err := strconv.ParseInt(args[1], 10, 64); err == nil {
-			clearUserChat(int(i), d, s, args[0])
+		if i, err := strconv.ParseInt(args[2], 10, 64); err == nil {
+			clearUserChat(int(i), d, s, args[1])
 			removeLater(s, m)
 			return
 		}
 	} else if len(args) == 1 {
-		fmt.Println("clearing " + args[0] + " messages from " + d.Name + " for user " + member.User.Username)
-		if i, err := strconv.ParseInt(args[0], 10, 64); err == nil {
+		fmt.Println("clearing " + args[1] + " messages from " + d.Name + " for user " + member.User.Username)
+		if i, err := strconv.ParseInt(args[1], 10, 64); err == nil {
 			clearChannelChat(int(i), d, s)
 			removeLater(s, m)
 			return
@@ -206,10 +185,29 @@ func triviaExec(s *discordgo.Session, d *discordgo.Channel) {
 			})
 		} else if err != nil {
 			s.ChannelMessageSend(d.ID, formatError(err))
+			fmt.Errorf("Could not get trivia", err)
 		}
 	}
 }
 
 func topic(s *discordgo.Session, d *discordgo.Channel) {
 	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Description: d.Topic, Title: d.Name, Color: 10181046,})
+}
+
+func help(s *discordgo.Session, d *discordgo.Channel, user *discordgo.User, admin bool) {
+	fmt.Println("cb help executed")
+	embedElements := []*discordgo.MessageEmbedField{}
+	for _, cmd := range cmds {
+		if cmd.AdminReq && !admin || cmd.Description == "Secret." {
+			continue
+		} else {
+			embedElements = append(embedElements, &discordgo.MessageEmbedField{Name:cmd.Prefix, Inline: false, Value:cmd.Description})
+		}
+	}
+
+	channel, err := s.UserChannelCreate(user.ID)
+	if err != nil {
+		fmt.Errorf("Could not create private channel", err)
+	}
+	s.ChannelMessageSendEmbed(channel.ID, &discordgo.MessageEmbed{Title:"Catbot Help", Fields:embedElements, Color:10181046})
 }
