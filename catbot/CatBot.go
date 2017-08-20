@@ -12,6 +12,8 @@ import (
 	"errors"
 	"bytes"
 	"github.com/Time6628/OpenTDB-Go"
+	"github.com/nanobox-io/golang-scribble"
+	"os"
 )
 
 func init() {
@@ -26,6 +28,7 @@ var (
 	trivia = OpenTDB_Go.New(client)
 	nofilter []string
 	triviaRunning = false
+	db *scribble.Driver
 )
 
 func main()  {
@@ -40,28 +43,47 @@ func main()  {
 
 	u, err := dg.User("@me")
 	if err != nil {
-		fmt.Println("error obtaining account details,", err)
+		panic(err)
 	}
-
-	if err != nil {
-		fmt.Println("Error creating Discord session: ", err)
-		return
-	}
-	dg.AddHandler(messageCreate)
-
 	BotID = u.ID
+
+	err = os.Mkdir("./database", os.ModePerm)
+	if err != nil {
+		panic(err)
+	}
+
+	db, err = scribble.New("./database", &scribble.Options{})
+	if err != nil {
+		panic(err)
+	}
+
 	err = dg.Open()
 	if err != nil {
-		fmt.Println("Could not open discord session: ", err)
+		panic(err)
 	}
+
+	dg.AddHandler(messageCreate)
+	dg.AddHandler(guildJoin)
+
 	fmt.Println("CatBot is now running.  Press CTRL-C to exit.")
 	select {}
 }
 
 func forever() {}
 
-func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
+func guildJoin(s *discordgo.Session, g *discordgo.GuildMemberAdd) {
+	if isMuted(g.User.ID, g.GuildID) {
+		channels, _ := s.GuildChannels(g.GuildID)
+		for i := 0; i < len(channels); i++ {
+			channel := channels[i]
+			if !alreadyMutedInChannel(g.User.ID, channel) {
+				s.ChannelPermissionSet(channel.ID, g.User.ID, "member", 0, discordgo.PermissionSendMessages)
+			}
+		}
+	}
+}
 
+func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	if m.Author.ID == BotID {
 		return
@@ -182,6 +204,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		s.ChannelMessageSend(d.ID, "Unknown command.")
 	}
 }
+
 func doLater(i func()) {
 	timer := time.NewTimer(time.Minute * 1)
 	<- timer.C
@@ -276,7 +299,7 @@ func removeLaterBulk(session *discordgo.Session, messages []*discordgo.Message) 
 	}
 }
 
-func alreadyMuted(id string, channel *discordgo.Channel) (b bool) {
+func alreadyMutedInChannel(id string, channel *discordgo.Channel) (b bool) {
 	permissions := channel.PermissionOverwrites
 	for i := 0; i < len(permissions); i++ {
 		permission := permissions[i]
@@ -310,13 +333,33 @@ func getJson(url string, target interface{}) error {
 		return errors.New("Could not obtain json response")
 	}
 	return json.NewDecoder(bytes.NewReader(body)).Decode(target)
+}
 
-	/*
-	resp, err := httpClient.Get(url)
-	if err != nil {
-		panic(err.Error())
+type MutedUser struct {
+	DiscordID string `json:"ID"`
+}
+
+func addToMuted(user_id, guild_id string) {
+	user := MutedUser{DiscordID:user_id}
+	if err := db.Write(guild_id, user_id, user); err != nil {
+		panic(err)
 	}
-	defer resp.Body.Close()
-	return json.NewDecoder(resp.Body).Decode(target)
-	*/
+}
+
+func RemoveFromMuted(user_id, guild_id string) (err error) {
+	err = nil
+	if err = db.Delete(guild_id, user_id); err != nil {
+		return
+	}
+	return
+}
+
+func isMuted(user_id, guild_id string) bool {
+	user := MutedUser{}
+
+	if err := db.Read(guild_id, user_id, &user); err != nil {
+		return false
+	}
+
+	return false
 }

@@ -60,7 +60,7 @@ func catbot(s *discordgo.Session, d *discordgo.Channel) {
 }
 
 func mute(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, user_id string) {
-	if !alreadyMuted(user_id, d) {
+	if !alreadyMutedInChannel(user_id, d) {
 		s.ChannelPermissionSet(d.ID, user_id, "member", 0, discordgo.PermissionSendMessages)
 		rm, _ := s.ChannelMessageSend(d.ID, "Muted user <@" + user_id + ">!")
 		fmt.Println(m.Author.Username + " muted " + user_id)
@@ -69,19 +69,22 @@ func mute(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, user
 		rm, _ := s.ChannelMessageSend(m.ChannelID, "User already muted!")
 		removeLaterBulk(s, []*discordgo.Message{rm, m,})
 	}
-	s.UserNoteSet(user_id, "MUTED BY CATBOT")
+	fmt.Println(m.Author.Username + " muted " + user_id + " in all channels.")
+	addToMuted(user_id, d.GuildID)
 }
 
-func allMute(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, user_id string, channels []*discordgo.Channel) {
+func allMute(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, user_id string) {
+	channels, _ := s.GuildChannels(d.GuildID)
 	for i := 0; i < len(channels); i++ {
 		channel := channels[i]
-		if !alreadyMuted(user_id, channel) {
+		if !alreadyMutedInChannel(user_id, channel) {
 			s.ChannelPermissionSet(channel.ID, user_id, "member", 0, discordgo.PermissionSendMessages)
 		}
 	}
 	rm, _ := s.ChannelMessageSend(d.ID, "Muted user <@" + user_id + "> in all channels!")
 	removeLaterBulk(s, []*discordgo.Message{rm, m,})
 	fmt.Println(m.Author.Username + " muted " + user_id + " in all channels.")
+	addToMuted(user_id, d.GuildID)
 }
 
 func donationHelp(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message) {
