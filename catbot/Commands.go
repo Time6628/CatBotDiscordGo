@@ -32,25 +32,17 @@ func removeFilter(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Messa
 		e, _ := s.ChannelMessageSend(d.ID, "Channel already unfiltered.")
 		removeLaterBulk(s, []*discordgo.Message{e, m})
 	} else {
-		nofilter = append(nofilter, d.ID)
+		addToUnfilterd(d.ID, d.GuildID)
 		e, _ := s.ChannelMessageSend(d.ID, "Channel is no longer filtered.")
 		removeLaterBulk(s, []*discordgo.Message{e, m})
-		addToUnfilterd(d.ID, d.GuildID)
 	}
 }
 
 func enableFilter(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message) {
 	if IsChannelFiltered(d.ID, d.GuildID) == false {
-		toremove := -1
-		for i := range nofilter {
-			if nofilter[i] == d.ID {
-				toremove = i
-			}
-		}
-		nofilter = append(nofilter[:toremove], nofilter[toremove+1:]...)
+		removeFromUnfiltered(d.ID, d.GuildID)
 		e, _ := s.ChannelMessageSend(d.ID, "Channel is now filtered.")
 		removeLaterBulk(s, []*discordgo.Message{e, m})
-		removeFromUnfiltered(d.ID, d.GuildID)
 	} else {
 		e, _ := s.ChannelMessageSend(d.ID, "Channel is already filtered.")
 		removeLaterBulk(s, []*discordgo.Message{e, m})
@@ -77,8 +69,7 @@ func mute(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, user
 
 func allMute(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, user_id string) {
 	channels, _ := s.GuildChannels(d.GuildID)
-	for i := 0; i < len(channels); i++ {
-		channel := channels[i]
+	for _, channel := range channels {
 		if !alreadyMutedInChannel(user_id, channel) {
 			s.ChannelPermissionSet(channel.ID, user_id, "member", 0, discordgo.PermissionSendMessages)
 		}
@@ -199,7 +190,7 @@ func topic(s *discordgo.Session, d *discordgo.Channel) {
 	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Description: d.Topic, Title: d.Name, Color: 10181046,})
 }
 
-func help(s *discordgo.Session, d *discordgo.Channel, user *discordgo.User, admin bool) {
+func help(s *discordgo.Session, user *discordgo.User, admin bool) {
 	fmt.Println("cb help executed")
 	embedElements := []*discordgo.MessageEmbedField{}
 	for _, cmd := range cmds {

@@ -26,7 +26,6 @@ var (
 	BotID string
 	client = fasthttp.Client{ReadTimeout: time.Second * 10, WriteTimeout: time.Second * 10}
 	trivia = OpenTDB_Go.New(client)
-	nofilter []string
 	triviaRunning = false
 	db *scribble.Driver
 )
@@ -74,8 +73,7 @@ func forever() {}
 func guildJoin(s *discordgo.Session, g *discordgo.GuildMemberAdd) {
 	if isMuted(g.User.ID, g.GuildID) {
 		channels, _ := s.GuildChannels(g.GuildID)
-		for i := 0; i < len(channels); i++ {
-			channel := channels[i]
+		for _, channel := range channels {
 			if !alreadyMutedInChannel(g.User.ID, channel) {
 				s.ChannelPermissionSet(channel.ID, g.User.ID, "member", 0, discordgo.PermissionSendMessages)
 			}
@@ -143,7 +141,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	switch cmdBits[0] {
 	case helpCmd.Prefix:
-		helpCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.User, bool))(s, d, m.Author, admin)
+		helpCmd.Function.(func(*discordgo.Session, *discordgo.User, bool))(s, m.Author, admin)
 	case removeFilterCmd.Prefix:
 		if !admin {
 			return
@@ -209,15 +207,15 @@ func doLater(i func()) {
 }
 
 func countChannels(guilds []*discordgo.Guild) (channels int) {
-	for i := 0; i < len(guilds); i++ {
-		channels = len(guilds[i].Channels) + channels
+	for _, guild := range guilds {
+		channels = len(guild.Channels) + channels
 	}
 	return
 }
 
 func countUsers(guilds []*discordgo.Guild) (users int) {
-	for i := 0; i < len(guilds); i++ {
-		users = guilds[i].MemberCount + users
+	for _, guild := range guilds {
+		users = guild.MemberCount + users
 	}
 	return
 }
@@ -243,8 +241,7 @@ func clearChannelChat(i int, channel *discordgo.Channel, session *discordgo.Sess
 		return
 	}
 	todelete := []string{}
-	for i := 0; i < len(messages); i++ {
-		message := messages[i]
+	for _, message := range messages {
 		todelete = append(todelete, message.ID)
 	}
 	session.ChannelMessagesBulkDelete(channel.ID, todelete)
@@ -264,8 +261,7 @@ func clearUserChat(i int, channel *discordgo.Channel, session *discordgo.Session
 		return
 	}
 	todelete := []string{}
-	for i := 0; i < len(messages); i++ {
-		message := messages[i]
+	for _, message := range messages {
 		if message.Author.ID == id {
 			todelete = append(todelete, message.ID)
 		}
