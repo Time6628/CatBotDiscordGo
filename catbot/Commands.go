@@ -28,18 +28,19 @@ func info(s *discordgo.Session, d *discordgo.Channel) {
 }
 
 func removeFilter(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message) {
-	if filterChannel(d.ID) == false {
+	if IsChannelFiltered(d.ID, d.GuildID) == false {
 		e, _ := s.ChannelMessageSend(d.ID, "Channel already unfiltered.")
 		removeLaterBulk(s, []*discordgo.Message{e, m})
 	} else {
 		nofilter = append(nofilter, d.ID)
 		e, _ := s.ChannelMessageSend(d.ID, "Channel is no longer filtered.")
 		removeLaterBulk(s, []*discordgo.Message{e, m})
+		addToUnfilterd(d.ID, d.GuildID)
 	}
 }
 
 func enableFilter(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message) {
-	if filterChannel(d.ID) == false {
+	if IsChannelFiltered(d.ID, d.GuildID) == false {
 		toremove := -1
 		for i := range nofilter {
 			if nofilter[i] == d.ID {
@@ -49,6 +50,7 @@ func enableFilter(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Messa
 		nofilter = append(nofilter[:toremove], nofilter[toremove+1:]...)
 		e, _ := s.ChannelMessageSend(d.ID, "Channel is now filtered.")
 		removeLaterBulk(s, []*discordgo.Message{e, m})
+		removeFromUnfiltered(d.ID, d.GuildID)
 	} else {
 		e, _ := s.ChannelMessageSend(d.ID, "Channel is already filtered.")
 		removeLaterBulk(s, []*discordgo.Message{e, m})
@@ -96,14 +98,14 @@ func cat(s *discordgo.Session, d *discordgo.Channel) {
 	j := CatResponse{}
 	getJson("http://random.cat/meow", &j)
 	//s.ChannelMessageSend(d.ID, j.URL)
-	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Color: 10181046, Image: &discordgo.MessageEmbedImage{URL:j.URL}, Title: "Cat", URL: j.URL})
+	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Color: 10181046, Image: &discordgo.MessageEmbedImage{URL:j.URL}, URL: j.URL})
 }
 
 func snek(s *discordgo.Session, d *discordgo.Channel) {
 	j := CatResponse{}
 	getJson("http://fur.im/snek/snek.php", &j)
 	//s.ChannelMessageSend(d.ID, j.URL)
-	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Color: 10181046, Image: &discordgo.MessageEmbedImage{URL:j.URL}, Title: "Snek", URL: j.URL})
+	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Color: 10181046, Image: &discordgo.MessageEmbedImage{URL:j.URL}, URL: j.URL})
 }
 
 func broom(s *discordgo.Session, d *discordgo.Channel) {

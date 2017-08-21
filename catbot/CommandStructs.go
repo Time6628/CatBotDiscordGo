@@ -23,7 +23,7 @@ var (
 	vktrsCmd        = CommandBase{Prefix:"!vktrs",        Function:vktrs,        AdminReq: false, Description: "Secret.",                                             Usage:"!vktrs"}
 	clearCmd        = CommandBase{Prefix:"!clear",        Function:clear,        AdminReq: true,  Description: "Clears messages from a channel or user.",             Usage:"!clear <count> [user]",}
 	triviaCmd       = CommandBase{Prefix:"!trivia",       Function:triviaExec,   AdminReq: true,  Description: "Play some trivia.",                                   Usage:"!trivia",}
-	topicCmd        = CommandBase{Prefix:"!topic",        Function:topic,        AdminReq:false,  Description:"Gets the channel topic.",                              Usage:"!topic",}
-	helpCmd         = CommandBase{Prefix:"!help",         Function:help,         AdminReq:false,  Description:"See all commands in catbot.",                          Usage:"!help",}
+	topicCmd        = CommandBase{Prefix:"!topic",        Function:topic,        AdminReq: false, Description: "Gets the channel topic.",                             Usage:"!topic",}
+	helpCmd         = CommandBase{Prefix:"!help",         Function:help,         AdminReq: false, Description: "See all commands in catbot.",                         Usage:"!help",}
 	cmds            = []CommandBase{removeFilterCmd, enableFilterCmd, infoCmd, catbotCmd, muteCmd, allMuteCmd, donationHelpCmd, catCmd, snekCmd, broomCmd, rickCmd, vktrsCmd, clearCmd, triviaCmd, topicCmd}
 )

@@ -49,7 +49,7 @@ func main()  {
 
 	err = os.Mkdir("./database", os.ModePerm)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 
 	db, err = scribble.New("./database", &scribble.Options{})
@@ -120,9 +120,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	}
 
-	if filterChannel(d.ID) {
-		for i := 0; i < len(filters); i++ {
-			filt := filters[i]
+	if IsChannelFiltered(d.ID, d.GuildID) {
+		for _, filt := range filters {
 			if filt.MatchString(c) {
 				filter = true
 			}
@@ -200,8 +199,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		triviaCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
 	case topicCmd.Prefix:
 		topicCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
-	default:
-		s.ChannelMessageSend(d.ID, "Unknown command.")
 	}
 }
 
@@ -214,19 +211,6 @@ func doLater(i func()) {
 func countChannels(guilds []*discordgo.Guild) (channels int) {
 	for i := 0; i < len(guilds); i++ {
 		channels = len(guilds[i].Channels) + channels
-	}
-	return
-}
-
-func filterChannel(id string) (b bool) {
-	b = true
-	//for all the channels without filters,
-	for i := 0; i < len(nofilter); i++ {
-		//see if nofilter contains the channel id
-		if nofilter[i] == id {
-			b = false
-			return
-		}
 	}
 	return
 }
@@ -316,13 +300,6 @@ func removeLater(s *discordgo.Session, m *discordgo.Message) {
 	s.ChannelMessageDelete(m.ChannelID, m.ID)
 }
 
-func sendLater(s *discordgo.Session, cid string, msg string) {
-	timer := time.NewTimer(time.Minute * 1)
-	<- timer.C
-	s.ChannelMessageSend(cid, msg)
-}
-
-//structs
 type CatResponse struct {
 	URL string `json:"file"`
 }
@@ -335,8 +312,37 @@ func getJson(url string, target interface{}) error {
 	return json.NewDecoder(bytes.NewReader(body)).Decode(target)
 }
 
+type UnfilteredChannel struct {
+	ChannelID string `json:"ID"`
+}
+
 type MutedUser struct {
 	DiscordID string `json:"ID"`
+}
+
+
+func addToUnfilterd(channel_id, guild_id string) {
+	channel := UnfilteredChannel{ChannelID:channel_id}
+	if err := db.Write(guild_id, channel_id, channel); err != nil {
+		panic(err)
+	}
+}
+
+func removeFromUnfiltered(channel_id, guild_id string) (err error) {
+	if err = db.Delete(guild_id, channel_id); err != nil {
+		return
+	}
+	return
+}
+
+func IsChannelFiltered(channel_id, guild_id string) (b bool) {
+	c := UnfilteredChannel{}
+	b = true
+	if err := db.Read(guild_id, channel_id, &c); err != nil {
+		return
+	}
+	b = false
+	return
 }
 
 func addToMuted(user_id, guild_id string) {
@@ -346,8 +352,7 @@ func addToMuted(user_id, guild_id string) {
 	}
 }
 
-func RemoveFromMuted(user_id, guild_id string) (err error) {
-	err = nil
+func removeFromMuted(user_id, guild_id string) (err error) {
 	if err = db.Delete(guild_id, user_id); err != nil {
 		return
 	}
@@ -361,5 +366,5 @@ func isMuted(user_id, guild_id string) bool {
 		return false
 	}
 
-	return false
+	return true
 }
