@@ -50,7 +50,7 @@ func enableFilter(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Messa
 }
 
 func catbot(s *discordgo.Session, d *discordgo.Channel) {
-	s.ChannelMessageSend(d.ID, "Meow meow beep boop! I am catbot 2.0!")
+	s.ChannelMessageSend(d.ID, "Meow meow beep boop! I am catbot 2.1!")
 }
 
 func mute(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, user_id string) {
@@ -113,18 +113,18 @@ func vktrs(s *discordgo.Session, d *discordgo.Channel) {
 
 func clear(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, member *discordgo.Member, args []string) {
 	fmt.Println("clearing messages...")
-	if len(args) == 0 {
+	if len(args) == 1 {
 		s.ChannelMessageSend(d.ID, "Invalid parameters")
 		fmt.Println("Invalid clear paramters...")
 		return
-	} else if len(args) == 2 {
+	} else if len(args) == 3 {
 		fmt.Println("clearing messages from " + d.Name + " for user " + member.User.Username)
 		if i, err := strconv.ParseInt(args[2], 10, 64); err == nil {
 			clearUserChat(int(i), d, s, args[1])
 			removeLater(s, m)
 			return
 		}
-	} else if len(args) == 1 {
+	} else if len(args) == 2 {
 		fmt.Println("clearing " + args[1] + " messages from " + d.Name + " for user " + member.User.Username)
 		if i, err := strconv.ParseInt(args[1], 10, 64); err == nil {
 			clearChannelChat(int(i), d, s)

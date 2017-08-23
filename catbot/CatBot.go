@@ -32,7 +32,7 @@ var (
 
 func main()  {
 	go forever()
-	fmt.Println("Starting Catbot 2.0")
+	fmt.Println("Starting Catbot 2.1")
 
 	if token == "" {
 		fmt.Println("No token provided. Please run: catbot -t <bot token>")
@@ -139,7 +139,14 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	cmdBits := strings.Split(c, " ")
 
+	fmt.Println(cmdBits)
+
 	switch cmdBits[0] {
+	case clearCmd.Prefix:
+		if !canManageMessage(s, m.Author, d) {
+			return
+		}
+		clearCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message, *discordgo.Member, []string))(s, d, m.Message, member, cmdBits)
 	case helpCmd.Prefix:
 		helpCmd.Function.(func(*discordgo.Session, *discordgo.User, bool))(s, m.Author, admin)
 	case removeFilterCmd.Prefix:
@@ -177,7 +184,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		user_id := strings.TrimPrefix(strings.TrimSuffix(cmdBits[1], ">"), "<@")
 		allMuteCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message, string))(s, d, m.Message, user_id)
 	case donationHelpCmd.Prefix:
-		donationHelpCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
+		donationHelpCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message))(s, d, m.Message)
 	case catCmd.Prefix:
 		catCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
 	case snekCmd.Prefix:
@@ -188,11 +195,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		rickCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
 	case vktrsCmd.Prefix:
 		vktrsCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
-	case clearCmd.Prefix:
-		if canManageMessage(s, m.Author, d) {
-			return
-		}
-		clearCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message, *discordgo.Member, []string))(s, d, m.Message, member, cmdBits)
 	case triviaCmd.Prefix:
 		triviaCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
 	case topicCmd.Prefix:
@@ -245,7 +247,7 @@ func clearChannelChat(i int, channel *discordgo.Channel, session *discordgo.Sess
 		todelete = append(todelete, message.ID)
 	}
 	session.ChannelMessagesBulkDelete(channel.ID, todelete)
-	m, err := session.ChannelMessageSend(channel.ID, "Messages removed in channel " + channel.Name)
+	m, err := session.ChannelMessageSend(channel.ID, "Messages removed in channel " + "<#" + channel.ID + ">.")
 	if err != nil {
 		session.ChannelMessageSend(channel.ID, "```" + err.Error() + "```")
 		return
@@ -267,7 +269,7 @@ func clearUserChat(i int, channel *discordgo.Channel, session *discordgo.Session
 		}
 	}
 	session.ChannelMessagesBulkDelete(channel.ID, todelete)
-	m, _ := session.ChannelMessageSend(channel.ID, "Messages removed for user <@" + id + "> in channel " + channel.Name)
+	m, _ := session.ChannelMessageSend(channel.ID, "Messages removed for user <@" + id + "> in channel " + "<#" + channel.ID + ">.")
 	removeLater(session, m)
 }
 
