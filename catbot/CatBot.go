@@ -22,15 +22,15 @@ func init() {
 }
 
 var (
-	token string
-	BotID string
-	client = fasthttp.Client{ReadTimeout: time.Second * 10, WriteTimeout: time.Second * 10}
-	trivia = OpenTDB_Go.New(client)
+	token         string
+	BotID         string
+	client        = fasthttp.Client{ReadTimeout: time.Second * 10, WriteTimeout: time.Second * 10}
+	trivia        = OpenTDB_Go.New(client)
 	triviaRunning = false
-	db *scribble.Driver
+	db            *scribble.Driver
 )
 
-func main()  {
+func main() {
 	go forever()
 	fmt.Println("Starting Catbot 2.1")
 
@@ -109,7 +109,6 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	filters := []*regexp.Regexp{regexp.MustCompile("dick"), regexp.MustCompile("fuck"), regexp.MustCompile("penis"), regexp.MustCompile("vagina"), regexp.MustCompile("fag"), regexp.MustCompile("\\brape"), regexp.MustCompile("slut"), regexp.MustCompile("slut"), regexp.MustCompile("hitler"), regexp.MustCompile("\\b(jack)?ass(holes?|lick|wipe)?\\b"), regexp.MustCompile("arse(hole)?"), regexp.MustCompile("bitch"), regexp.MustCompile("whore"), regexp.MustCompile("nigg(er|a)"), regexp.MustCompile("bastard"), regexp.MustCompile("bea?stiality"), regexp.MustCompile("negro"), regexp.MustCompile("retard"), regexp.MustCompile("\\bcum\\b"), regexp.MustCompile("cunt"), regexp.MustCompile("dildo"), regexp.MustCompile("bollocks?"), regexp.MustCompile("\\bwank"), regexp.MustCompile("jizz"), regexp.MustCompile("piss"),}
 	filter := false
 
-
 	admin := false
 	for i := 0; i < len(roles); i++ {
 		role, _ := s.State.Role(g.ID, roles[i])
@@ -128,7 +127,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	if filter {
 		s.ChannelMessageDelete(m.ChannelID, m.ID)
-		rm, _ := s.ChannelMessageSend(m.ChannelID, "Messaged removed from <@" + m.Author.ID + ">.")
+		rm, _ := s.ChannelMessageSend(m.ChannelID, "Messaged removed from <@"+m.Author.ID+">.")
 		removeLater(s, rm)
 		return
 	}
@@ -171,8 +170,8 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			s.ChannelMessageSend(d.ID, "Please provide a user to mute!")
 			return
 		}
-		user_id := strings.TrimPrefix(strings.TrimSuffix(cmdBits[1], ">"), "<@")
-		muteCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message, string))(s, d, m.Message, user_id)
+		userId := strings.TrimPrefix(strings.TrimSuffix(cmdBits[1], ">"), "<@")
+		muteCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message, string))(s, d, m.Message, userId)
 	case allMuteCmd.Prefix:
 		if !admin {
 			return
@@ -181,8 +180,18 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			s.ChannelMessageSend(d.ID, "Please provide a user to mute!")
 			return
 		}
-		user_id := strings.TrimPrefix(strings.TrimSuffix(cmdBits[1], ">"), "<@")
-		allMuteCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message, string))(s, d, m.Message, user_id)
+		userId := strings.TrimPrefix(strings.TrimSuffix(cmdBits[1], ">"), "<@")
+		allMuteCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message, string))(s, d, m.Message, userId)
+	case unMuteAllCmd.Prefix:
+		if !admin {
+			return
+		}
+		if !strings.Contains(c, "@") {
+			s.ChannelMessageSend(d.ID, "Please provide a user to unmute!")
+			return
+		}
+		userId := strings.TrimPrefix(strings.TrimSuffix(cmdBits[1], ">"), "<@")
+		unMuteAllCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message, string))(s, d, m.Message, userId)
 	case donationHelpCmd.Prefix:
 		donationHelpCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message))(s, d, m.Message)
 	case catCmd.Prefix:
@@ -204,7 +213,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 func doLater(i func()) {
 	timer := time.NewTimer(time.Minute * 1)
-	<- timer.C
+	<-timer.C
 	i()
 }
 
@@ -228,7 +237,7 @@ func formatError(err error) string {
 
 func canManageMessage(session *discordgo.Session, user *discordgo.User, channel *discordgo.Channel) bool {
 	uPerms, _ := session.UserChannelPermissions(user.ID, channel.ID)
-	if (uPerms&discordgo.PermissionManageMessages) == discordgo.PermissionManageMessages {
+	if (uPerms & discordgo.PermissionManageMessages) == discordgo.PermissionManageMessages {
 		return true
 	}
 	return false
@@ -239,17 +248,17 @@ func clearChannelChat(i int, channel *discordgo.Channel, session *discordgo.Sess
 	messages, err := session.ChannelMessages(channel.ID, i, "", "", "")
 	if err != nil {
 		session.ChannelMessageSend(channel.ID, "Could not get messages.")
-		session.ChannelMessageSend(channel.ID, "```" + err.Error() + "```")
+		session.ChannelMessageSend(channel.ID, "```"+err.Error()+"```")
 		return
 	}
-	todelete := []string{}
+	var todelete []string
 	for _, message := range messages {
 		todelete = append(todelete, message.ID)
 	}
 	session.ChannelMessagesBulkDelete(channel.ID, todelete)
-	m, err := session.ChannelMessageSend(channel.ID, "Messages removed in channel " + "<#" + channel.ID + ">.")
+	m, err := session.ChannelMessageSend(channel.ID, "Messages removed in channel "+"<#"+channel.ID+">.")
 	if err != nil {
-		session.ChannelMessageSend(channel.ID, "```" + err.Error() + "```")
+		session.ChannelMessageSend(channel.ID, "```"+err.Error()+"```")
 		return
 	}
 	removeLater(session, m)
@@ -259,24 +268,24 @@ func clearUserChat(i int, channel *discordgo.Channel, session *discordgo.Session
 	messages, err := session.ChannelMessages(channel.ID, i, "", "", "")
 	if err != nil {
 		session.ChannelMessageSend(channel.ID, "Could not get messages.")
-		session.ChannelMessageSend(channel.ID, "```" + err.Error() + "```")
+		session.ChannelMessageSend(channel.ID, "```"+err.Error()+"```")
 		return
 	}
-	todelete := []string{}
+	var todelete []string
 	for _, message := range messages {
 		if message.Author.ID == id {
 			todelete = append(todelete, message.ID)
 		}
 	}
 	session.ChannelMessagesBulkDelete(channel.ID, todelete)
-	m, _ := session.ChannelMessageSend(channel.ID, "Messages removed for user <@" + id + "> in channel " + "<#" + channel.ID + ">.")
+	m, _ := session.ChannelMessageSend(channel.ID, "Messages removed for user <@"+id+"> in channel "+"<#"+channel.ID+">.")
 	removeLater(session, m)
 }
 
 func removeLaterBulk(session *discordgo.Session, messages []*discordgo.Message) {
 	for _, z := range messages {
 		timer := time.NewTimer(time.Second * 5)
-		<- timer.C
+		<-timer.C
 		session.ChannelMessageDelete(z.ChannelID, z.ID)
 	}
 }
@@ -294,7 +303,7 @@ func alreadyMutedInChannel(id string, channel *discordgo.Channel) (b bool) {
 
 func removeLater(s *discordgo.Session, m *discordgo.Message) {
 	timer := time.NewTimer(time.Second * 5)
-	<- timer.C
+	<-timer.C
 	s.ChannelMessageDelete(m.ChannelID, m.ID)
 }
 
@@ -305,7 +314,7 @@ type CatResponse struct {
 func getJson(url string, target interface{}) error {
 	stat, body, err := client.Get(nil, url)
 	if err != nil || stat != 200 {
-		return errors.New("Could not obtain json response")
+		return errors.New("could not obtain json response")
 	}
 	return json.NewDecoder(bytes.NewReader(body)).Decode(target)
 }
@@ -318,49 +327,48 @@ type MutedUser struct {
 	DiscordID string `json:"ID"`
 }
 
-
-func addToUnfilterd(channel_id, guild_id string) {
-	channel := UnfilteredChannel{ChannelID:channel_id}
-	if err := db.Write(guild_id, channel_id, channel); err != nil {
-		panic(err)
+func addToUnfilterd(channelId, guildId string) {
+	channel := UnfilteredChannel{ChannelID: channelId}
+	if err := db.Write(guildId, channelId, channel); err != nil {
+		fmt.Println(err)
 	}
 }
 
-func removeFromUnfiltered(channel_id, guild_id string) (err error) {
-	if err = db.Delete(guild_id, channel_id); err != nil {
+func removeFromUnfiltered(channelId, guildId string) (err error) {
+	if err = db.Delete(guildId, channelId); err != nil {
 		return
 	}
 	return
 }
 
-func IsChannelFiltered(channel_id, guild_id string) (b bool) {
+func IsChannelFiltered(channelId, guildId string) (b bool) {
 	c := UnfilteredChannel{}
 	b = true
-	if err := db.Read(guild_id, channel_id, &c); err != nil {
+	if err := db.Read(guildId, channelId, &c); err != nil {
 		return
 	}
 	b = false
 	return
 }
 
-func addToMuted(user_id, guild_id string) {
-	user := MutedUser{DiscordID:user_id}
-	if err := db.Write(guild_id, user_id, user); err != nil {
-		panic(err)
+func addToMuted(userId, guildId string) {
+	user := MutedUser{DiscordID: userId}
+	if err := db.Write(guildId, userId, user); err != nil {
+		fmt.Println(err)
 	}
 }
 
-func removeFromMuted(user_id, guild_id string) (err error) {
-	if err = db.Delete(guild_id, user_id); err != nil {
+func removeFromMuted(userId, guildId string) (err error) {
+	if err = db.Delete(guildId, userId); err != nil {
 		return
 	}
 	return
 }
 
-func isMuted(user_id, guild_id string) bool {
+func isMuted(userId, guildId string) bool {
 	user := MutedUser{}
 
-	if err := db.Read(guild_id, user_id, &user); err != nil {
+	if err := db.Read(guildId, userId, &user); err != nil {
 		return false
 	}
 

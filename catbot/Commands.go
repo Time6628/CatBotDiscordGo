@@ -11,10 +11,10 @@ import (
 func info(s *discordgo.Session, d *discordgo.Channel) {
 	fmt.Println("Sending info...")
 	embed := discordgo.MessageEmbed{
-		Title: "Info",
-		Color: 10181046,
+		Title:       "Info",
+		Color:       10181046,
 		Description: "A rewrite of KookyKraftMC discord bot, written in Go.",
-		URL: "https://github.com/Time6628/CatBotDiscordGo",
+		URL:         "https://github.com/Time6628/CatBotDiscordGo",
 		Fields: []*discordgo.MessageEmbedField{
 			{Name: "Servers", Value: strconv.Itoa(len(s.State.Guilds)), Inline: true},
 			{Name: "Users", Value: strconv.Itoa(countUsers(s.State.Guilds)), Inline: true},
@@ -53,35 +53,46 @@ func catbot(s *discordgo.Session, d *discordgo.Channel) {
 	s.ChannelMessageSend(d.ID, "Meow meow beep boop! I am catbot 2.1!")
 }
 
-func mute(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, user_id string) {
-	if !alreadyMutedInChannel(user_id, d) {
-		s.ChannelPermissionSet(d.ID, user_id, "member", 0, discordgo.PermissionSendMessages)
-		rm, _ := s.ChannelMessageSend(d.ID, "Muted user <@" + user_id + ">!")
-		fmt.Println(m.Author.Username + " muted " + user_id)
+func mute(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, userId string) {
+	if !alreadyMutedInChannel(userId, d) {
+		s.ChannelPermissionSet(d.ID, userId, "member", 0, discordgo.PermissionSendMessages)
+		rm, _ := s.ChannelMessageSend(d.ID, "Muted user <@"+userId+">!")
+		fmt.Println(m.Author.Username + " muted " + userId)
 		removeLaterBulk(s, []*discordgo.Message{rm, m,})
 	} else {
 		rm, _ := s.ChannelMessageSend(m.ChannelID, "User already muted!")
 		removeLaterBulk(s, []*discordgo.Message{rm, m,})
 	}
-	fmt.Println(m.Author.Username + " muted " + user_id + " in all channels.")
-	addToMuted(user_id, d.GuildID)
+	fmt.Println(m.Author.Username + " muted " + userId + " in all channels.")
+	addToMuted(userId, d.GuildID)
 }
 
-func allMute(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, user_id string) {
+func allMute(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, userId string) {
 	channels, _ := s.GuildChannels(d.GuildID)
 	for _, channel := range channels {
-		if !alreadyMutedInChannel(user_id, channel) {
-			s.ChannelPermissionSet(channel.ID, user_id, "member", 0, discordgo.PermissionSendMessages)
+		if !alreadyMutedInChannel(userId, channel) {
+			s.ChannelPermissionSet(channel.ID, userId, "member", 0, discordgo.PermissionSendMessages)
 		}
 	}
-	rm, _ := s.ChannelMessageSend(d.ID, "Muted user <@" + user_id + "> in all channels!")
+	rm, _ := s.ChannelMessageSend(d.ID, "Muted user <@"+userId+"> in all channels!")
 	removeLaterBulk(s, []*discordgo.Message{rm, m,})
-	fmt.Println(m.Author.Username + " muted " + user_id + " in all channels.")
-	addToMuted(user_id, d.GuildID)
+	fmt.Println(m.Author.Username + " muted " + userId + " in all channels.")
+	addToMuted(userId, d.GuildID)
+}
+
+func unMuteAll(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, userId string) {
+	channels, _ := s.GuildChannels(d.GuildID)
+	for _, channel := range channels {
+		s.ChannelPermissionDelete(channel.ID, userId)
+	}
+	rm, _ := s.ChannelMessageSend(d.ID, "Unmuted user <@"+userId+"> in all channels!")
+	removeLaterBulk(s, []*discordgo.Message{rm, m})
+	fmt.Println(m.Author.Username + " unmuted " + userId + " in all channels.")
+	removeFromMuted(userId, d.GuildID)
 }
 
 func donationHelp(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message) {
-	s.ChannelMessageSend(d.ID,"If you don't have a rank or perk you purchased please make a forum post here: http://kkmc.info/2du3U2l")
+	s.ChannelMessageSend(d.ID, "If you don't have a rank or perk you purchased please make a forum post here: http://kkmc.info/2du3U2l")
 	removeLater(s, m)
 }
 
@@ -89,14 +100,14 @@ func cat(s *discordgo.Session, d *discordgo.Channel) {
 	j := CatResponse{}
 	getJson("http://random.cat/meow", &j)
 	//s.ChannelMessageSend(d.ID, j.URL)
-	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Color: 10181046, Image: &discordgo.MessageEmbedImage{URL:j.URL}, URL: j.URL})
+	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Color: 10181046, Image: &discordgo.MessageEmbedImage{URL: j.URL}, URL: j.URL})
 }
 
 func snek(s *discordgo.Session, d *discordgo.Channel) {
 	j := CatResponse{}
 	getJson("http://fur.im/snek/snek.php", &j)
 	//s.ChannelMessageSend(d.ID, j.URL)
-	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Color: 10181046, Image: &discordgo.MessageEmbedImage{URL:j.URL}, URL: j.URL})
+	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Color: 10181046, Image: &discordgo.MessageEmbedImage{URL: j.URL}, URL: j.URL})
 }
 
 func broom(s *discordgo.Session, d *discordgo.Channel) {
@@ -146,7 +157,7 @@ func triviaExec(s *discordgo.Session, d *discordgo.Channel) {
 				j := rand.Intn(i + 1)
 				a[i], a[j] = a[j], a[i]
 			}
-			embedanswers := []*discordgo.MessageEmbedField{}
+			var embedanswers []*discordgo.MessageEmbedField
 			if len(a) == 2 {
 				embedanswers = []*discordgo.MessageEmbedField{
 					{Name: "Category", Value: question.Results[0].Category, Inline: false},
@@ -175,13 +186,13 @@ func triviaExec(s *discordgo.Session, d *discordgo.Channel) {
 			if err != nil {
 				s.ChannelMessageSend(d.ID, formatError(err))
 			}
-			doLater(func (){
-				s.ChannelMessageSend(d.ID, "The correct answer was: " + html.UnescapeString(question.Results[0].CorrectAnswer))
+			doLater(func() {
+				s.ChannelMessageSend(d.ID, "The correct answer was: "+html.UnescapeString(question.Results[0].CorrectAnswer))
 				triviaRunning = false
 			})
 		} else if err != nil {
 			s.ChannelMessageSend(d.ID, formatError(err))
-			fmt.Errorf("Could not get trivia", err)
+			fmt.Errorf("could not get trivia", err)
 		}
 	}
 }
@@ -192,18 +203,18 @@ func topic(s *discordgo.Session, d *discordgo.Channel) {
 
 func help(s *discordgo.Session, user *discordgo.User, admin bool) {
 	fmt.Println("cb help executed")
-	embedElements := []*discordgo.MessageEmbedField{}
+	var embedElements []*discordgo.MessageEmbedField
 	for _, cmd := range cmds {
 		if cmd.AdminReq && !admin || cmd.Description == "Secret." {
 			continue
 		} else {
-			embedElements = append(embedElements, &discordgo.MessageEmbedField{Name:cmd.Prefix, Inline: false, Value:cmd.Description})
+			embedElements = append(embedElements, &discordgo.MessageEmbedField{Name: cmd.Prefix, Inline: false, Value: cmd.Description})
 		}
 	}
 
 	channel, err := s.UserChannelCreate(user.ID)
 	if err != nil {
-		fmt.Errorf("Could not create private channel", err)
+		fmt.Errorf("could not create private channel", err)
 	}
-	s.ChannelMessageSendEmbed(channel.ID, &discordgo.MessageEmbed{Title:"Catbot Help", Fields:embedElements, Color:10181046})
+	s.ChannelMessageSendEmbed(channel.ID, &discordgo.MessageEmbed{Title: "Catbot Help", Fields: embedElements, Color: 10181046})
 }
