@@ -1,19 +1,19 @@
 package main
 
 import (
-	"fmt"
-	"github.com/bwmarrin/discordgo"
-	"strings"
-	"flag"
-	"time"
-	"regexp"
-	"encoding/json"
-	"github.com/valyala/fasthttp"
-	"errors"
 	"bytes"
+	"encoding/json"
+	"errors"
+	"flag"
+	"fmt"
 	"github.com/Time6628/OpenTDB-Go"
+	"github.com/bwmarrin/discordgo"
 	"github.com/nanobox-io/golang-scribble"
+	"github.com/valyala/fasthttp"
 	"os"
+	"regexp"
+	"strings"
+	"time"
 )
 
 func init() {
@@ -39,6 +39,9 @@ func main() {
 		return
 	}
 	dg, err := discordgo.New("Bot " + token)
+	if err != nil {
+		panic(err)
+	}
 
 	u, err := dg.User("@me")
 	if err != nil {
@@ -75,9 +78,17 @@ func guildJoin(s *discordgo.Session, g *discordgo.GuildMemberAdd) {
 		channels, _ := s.GuildChannels(g.GuildID)
 		for _, channel := range channels {
 			if !alreadyMutedInChannel(g.User.ID, channel) {
-				s.ChannelPermissionSet(channel.ID, g.User.ID, "member", 0, discordgo.PermissionSendMessages)
+				_ = s.ChannelPermissionSet(channel.ID, g.User.ID, "member", 0, discordgo.PermissionSendMessages)
 			}
 		}
+	}
+
+	if g.GuildID == "71374620497809408" {
+		channel, err := s.UserChannelCreate(g.User.ID)
+		if err != nil {
+			return
+		}
+		sendJoinInfo(s, channel)
 	}
 }
 
@@ -106,7 +117,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 
 	c := strings.ToLower(m.Content)
 
-	filters := []*regexp.Regexp{regexp.MustCompile("dick"), regexp.MustCompile("fuck"), regexp.MustCompile("penis"), regexp.MustCompile("vagina"), regexp.MustCompile("fag"), regexp.MustCompile("\\brape"), regexp.MustCompile("slut"), regexp.MustCompile("slut"), regexp.MustCompile("hitler"), regexp.MustCompile("\\b(jack)?ass(holes?|lick|wipe)?\\b"), regexp.MustCompile("arse(hole)?"), regexp.MustCompile("bitch"), regexp.MustCompile("whore"), regexp.MustCompile("nigg(er|a)"), regexp.MustCompile("bastard"), regexp.MustCompile("bea?stiality"), regexp.MustCompile("negro"), regexp.MustCompile("retard"), regexp.MustCompile("\\bcum\\b"), regexp.MustCompile("cunt"), regexp.MustCompile("dildo"), regexp.MustCompile("bollocks?"), regexp.MustCompile("\\bwank"), regexp.MustCompile("jizz"), regexp.MustCompile("piss"),}
+	filters := []*regexp.Regexp{regexp.MustCompile("dick"), regexp.MustCompile("shit"), regexp.MustCompile("fuck"), regexp.MustCompile("penis"), regexp.MustCompile("vagina"), regexp.MustCompile("fag"), regexp.MustCompile("\\brape"), regexp.MustCompile("slut"), regexp.MustCompile("slut"), regexp.MustCompile("hitler"), regexp.MustCompile("\\b(jack)?ass(holes?|lick|wipe)?\\b"), regexp.MustCompile("arse(hole)?"), regexp.MustCompile("bitch"), regexp.MustCompile("whore"), regexp.MustCompile("nigg(er|a)"), regexp.MustCompile("bastard"), regexp.MustCompile("bea?stiality"), regexp.MustCompile("negro"), regexp.MustCompile("retard"), regexp.MustCompile("\\bcum\\b"), regexp.MustCompile("cunt"), regexp.MustCompile("dildo"), regexp.MustCompile("bollocks?"), regexp.MustCompile("\\bwank"), regexp.MustCompile("jizz"), regexp.MustCompile("piss"),}
 	filter := false
 
 	admin := false
@@ -126,7 +137,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	if filter {
-		s.ChannelMessageDelete(m.ChannelID, m.ID)
+		_ = s.ChannelMessageDelete(m.ChannelID, m.ID)
 		rm, _ := s.ChannelMessageSend(m.ChannelID, "Messaged removed from <@"+m.Author.ID+">.")
 		removeLater(s, rm)
 		return
@@ -137,6 +148,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	cmdBits := strings.Split(c, " ")
+
+	channel, err := s.Channel(m.ChannelID)
+	if err != nil {
+		return
+	}
 
 	fmt.Println(cmdBits)
 
@@ -167,7 +183,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		if !strings.Contains(c, "@") {
-			s.ChannelMessageSend(d.ID, "Please provide a user to mute!")
+			_, _ = s.ChannelMessageSend(d.ID, "Please provide a user to mute!")
 			return
 		}
 		userId := strings.TrimPrefix(strings.TrimSuffix(cmdBits[1], ">"), "<@")
@@ -177,7 +193,7 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		if !strings.Contains(c, "@") {
-			s.ChannelMessageSend(d.ID, "Please provide a user to mute!")
+			_, _ = s.ChannelMessageSend(d.ID, "Please provide a user to mute!")
 			return
 		}
 		userId := strings.TrimPrefix(strings.TrimSuffix(cmdBits[1], ">"), "<@")
@@ -187,17 +203,11 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 			return
 		}
 		if !strings.Contains(c, "@") {
-			s.ChannelMessageSend(d.ID, "Please provide a user to unmute!")
+			_, _ = s.ChannelMessageSend(d.ID, "Please provide a user to unmute!")
 			return
 		}
 		userId := strings.TrimPrefix(strings.TrimSuffix(cmdBits[1], ">"), "<@")
 		unMuteAllCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message, string))(s, d, m.Message, userId)
-	case donationHelpCmd.Prefix:
-		donationHelpCmd.Function.(func(*discordgo.Session, *discordgo.Channel, *discordgo.Message))(s, d, m.Message)
-	case catCmd.Prefix:
-		catCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
-	case snekCmd.Prefix:
-		snekCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
 	case broomCmd.Prefix:
 		broomCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
 	case rickCmd.Prefix:
@@ -208,6 +218,10 @@ func messageCreate(s *discordgo.Session, m *discordgo.MessageCreate) {
 		triviaCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
 	case topicCmd.Prefix:
 		topicCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, d)
+	case joinCmd.Prefix:
+		joinCmd.Function.(func(*discordgo.Session, *discordgo.User))(s, m.Author)
+	case joinAdmCmd.Prefix:
+		joinAdmCmd.Function.(func(*discordgo.Session, *discordgo.Channel))(s, channel)
 	}
 }
 
@@ -247,18 +261,22 @@ func clearChannelChat(i int, channel *discordgo.Channel, session *discordgo.Sess
 	fmt.Println("Clearing channel messages...")
 	messages, err := session.ChannelMessages(channel.ID, i, "", "", "")
 	if err != nil {
-		session.ChannelMessageSend(channel.ID, "Could not get messages.")
-		session.ChannelMessageSend(channel.ID, "```"+err.Error()+"```")
+		_, _ = session.ChannelMessageSend(channel.ID, "Could not get messages.")
+		_, _ = session.ChannelMessageSend(channel.ID, "```"+err.Error()+"```")
 		return
 	}
 	var todelete []string
 	for _, message := range messages {
 		todelete = append(todelete, message.ID)
 	}
-	session.ChannelMessagesBulkDelete(channel.ID, todelete)
+	err = session.ChannelMessagesBulkDelete(channel.ID, todelete)
+	if err != nil {
+		_, _ = session.ChannelMessageSend(channel.ID, "```"+err.Error()+"```")
+		return
+	}
 	m, err := session.ChannelMessageSend(channel.ID, "Messages removed in channel "+"<#"+channel.ID+">.")
 	if err != nil {
-		session.ChannelMessageSend(channel.ID, "```"+err.Error()+"```")
+		_, _ = session.ChannelMessageSend(channel.ID, "```"+err.Error()+"```")
 		return
 	}
 	removeLater(session, m)
@@ -267,8 +285,8 @@ func clearChannelChat(i int, channel *discordgo.Channel, session *discordgo.Sess
 func clearUserChat(i int, channel *discordgo.Channel, session *discordgo.Session, id string) {
 	messages, err := session.ChannelMessages(channel.ID, i, "", "", "")
 	if err != nil {
-		session.ChannelMessageSend(channel.ID, "Could not get messages.")
-		session.ChannelMessageSend(channel.ID, "```"+err.Error()+"```")
+		_, _ = session.ChannelMessageSend(channel.ID, "Could not get messages.")
+		_, _ = session.ChannelMessageSend(channel.ID, "```"+err.Error()+"```")
 		return
 	}
 	var todelete []string
@@ -277,7 +295,7 @@ func clearUserChat(i int, channel *discordgo.Channel, session *discordgo.Session
 			todelete = append(todelete, message.ID)
 		}
 	}
-	session.ChannelMessagesBulkDelete(channel.ID, todelete)
+	_ = session.ChannelMessagesBulkDelete(channel.ID, todelete)
 	m, _ := session.ChannelMessageSend(channel.ID, "Messages removed for user <@"+id+"> in channel "+"<#"+channel.ID+">.")
 	removeLater(session, m)
 }
@@ -286,7 +304,7 @@ func removeLaterBulk(session *discordgo.Session, messages []*discordgo.Message) 
 	for _, z := range messages {
 		timer := time.NewTimer(time.Second * 5)
 		<-timer.C
-		session.ChannelMessageDelete(z.ChannelID, z.ID)
+		_ = session.ChannelMessageDelete(z.ChannelID, z.ID)
 	}
 }
 
@@ -304,11 +322,7 @@ func alreadyMutedInChannel(id string, channel *discordgo.Channel) (b bool) {
 func removeLater(s *discordgo.Session, m *discordgo.Message) {
 	timer := time.NewTimer(time.Second * 5)
 	<-timer.C
-	s.ChannelMessageDelete(m.ChannelID, m.ID)
-}
-
-type CatResponse struct {
-	URL string `json:"file"`
+	_ = s.ChannelMessageDelete(m.ChannelID, m.ID)
 }
 
 func getJson(url string, target interface{}) error {
@@ -327,7 +341,7 @@ type MutedUser struct {
 	DiscordID string `json:"ID"`
 }
 
-func addToUnfilterd(channelId, guildId string) {
+func addToUnfiltered(channelId, guildId string) {
 	channel := UnfilteredChannel{ChannelID: channelId}
 	if err := db.Write(guildId, channelId, channel); err != nil {
 		fmt.Println(err)
@@ -373,4 +387,73 @@ func isMuted(userId, guildId string) bool {
 	}
 
 	return true
+}
+
+type ServerInfo struct {
+	Name     string
+	Launcher string
+	Version  string
+	Address  string
+}
+
+func (server ServerInfo) getDiscordString() string {
+	return fmt.Sprintf("%s (Version %s): `%s`", server.Name, server.Version, server.Address)
+}
+
+func getServerInfo(s *discordgo.Session) []ServerInfo {
+	chann, _ := s.GuildChannels("71374620497809408")
+
+	var serverInfos []ServerInfo
+
+	for _, ch := range chann {
+		if ch.ParentID == "360566612220182529" {
+			if strings.Contains(ch.Topic, "||") {
+				parsedChannels := strings.Split(ch.Topic, "\\||")
+				for e := range parsedChannels {
+					channelTopicSplit := strings.Split(parsedChannels[e], "|")
+					if len(channelTopicSplit) >= 4 {
+						serverInfos = append(serverInfos[:], ServerInfo{Name: channelTopicSplit[0], Launcher: channelTopicSplit[1], Version: channelTopicSplit[2], Address: channelTopicSplit[3]})
+					}
+				}
+			} else {
+				channel := strings.Split(ch.Topic, "|")
+				if len(channel) >= 4 {
+					serverInfos = append(serverInfos[:], ServerInfo{Name: channel[0], Launcher: channel[1], Version: channel[2], Address: channel[3]})
+				}
+			}
+		}
+	}
+
+	return serverInfos
+}
+
+func sendJoinInfo(s *discordgo.Session, mChannel *discordgo.Channel) {
+	serverInfo := getServerInfo(s)
+
+	serverInfoStringForm := ""
+
+	for e := range serverInfo {
+		serverInfoStringForm += serverInfo[e].getDiscordString() + "\n"
+	}
+
+	embed := discordgo.MessageEmbed{
+		Title:       "Welcome To Nytro Networks",
+		Color:       10181046,
+		Description: "Welcome to The Nytro Network official Discord, please read the rules below.",
+		Fields: []*discordgo.MessageEmbedField{
+			{Name: "About Us", Value: "We are a Modded Minecraft & Ark server network.\n", Inline: false},
+			{Name: "Servers", Value: fmt.Sprintf("%s", serverInfoStringForm), Inline: false},
+			{Name: "Rules of the Nytro Networks Discord <:Nytro:435179559462109185> :clipboard:", Value: "- Do not bypass the filter.\n- Be nice to everyone.\n- Do not spam, this includes sending the same message in multiple channels, just send it once, someone will see it.\n- No advertising of other servers, publicly or in private messages.\n- Any links that are dangerous or we believe to be suspicious will be removed.", Inline: false},
+			{Name: "Support", Value: "If you need help with any server issues, please use <#122793141316091904>.\nIf you're having any issues with our launcher, please use <#435176219542028289>", Inline: false},
+			{Name: "Links ", Value: "[Shop](http://shop.nytro.co)\n" +
+				"[Website](https://nytro.co)\n", Inline: false},
+		},
+		Footer: &discordgo.MessageEmbedFooter{
+			Text: "shibas are the best cats",
+		},
+	}
+	_, err := s.ChannelMessageSendEmbed(mChannel.ID, &embed)
+	if err != nil {
+		return
+	}
 }
