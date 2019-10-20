@@ -1,11 +1,11 @@
 package main
 
 import (
-	"github.com/bwmarrin/discordgo"
-	"strconv"
 	"fmt"
-	"math/rand"
+	"github.com/bwmarrin/discordgo"
 	"html"
+	"math/rand"
+	"strconv"
 )
 
 func info(s *discordgo.Session, d *discordgo.Channel) {
@@ -13,7 +13,7 @@ func info(s *discordgo.Session, d *discordgo.Channel) {
 	embed := discordgo.MessageEmbed{
 		Title:       "Info",
 		Color:       10181046,
-		Description: "A rewrite of KookyKraftMC discord bot, written in Go.",
+		Description: "A rewrite of Nytro Networks discord bot, written in Go.",
 		URL:         "https://github.com/Time6628/CatBotDiscordGo",
 		Fields: []*discordgo.MessageEmbedField{
 			{Name: "Servers", Value: strconv.Itoa(len(s.State.Guilds)), Inline: true},
@@ -32,7 +32,7 @@ func removeFilter(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Messa
 		e, _ := s.ChannelMessageSend(d.ID, "Channel already unfiltered.")
 		removeLaterBulk(s, []*discordgo.Message{e, m})
 	} else {
-		addToUnfilterd(d.ID, d.GuildID)
+		addToUnfiltered(d.ID, d.GuildID)
 		e, _ := s.ChannelMessageSend(d.ID, "Channel is no longer filtered.")
 		removeLaterBulk(s, []*discordgo.Message{e, m})
 	}
@@ -83,31 +83,17 @@ func allMute(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, u
 func unMuteAll(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message, userId string) {
 	channels, _ := s.GuildChannels(d.GuildID)
 	for _, channel := range channels {
-		s.ChannelPermissionDelete(channel.ID, userId)
+		_ = s.ChannelPermissionDelete(channel.ID, userId)
 	}
 	rm, _ := s.ChannelMessageSend(d.ID, "Unmuted user <@"+userId+"> in all channels!")
 	removeLaterBulk(s, []*discordgo.Message{rm, m})
 	fmt.Println(m.Author.Username + " unmuted " + userId + " in all channels.")
-	removeFromMuted(userId, d.GuildID)
+	_ = removeFromMuted(userId, d.GuildID)
 }
 
 func donationHelp(s *discordgo.Session, d *discordgo.Channel, m *discordgo.Message) {
-	s.ChannelMessageSend(d.ID, "If you don't have a rank or perk you purchased please make a forum post here: http://kkmc.info/2du3U2l")
+	_, _ = s.ChannelMessageSend(d.ID, "If you don't have a rank or perk you purchased please make a forum post here: http://kkmc.info/2du3U2l")
 	removeLater(s, m)
-}
-
-func cat(s *discordgo.Session, d *discordgo.Channel) {
-	j := CatResponse{}
-	getJson("http://random.cat/meow", &j)
-	//s.ChannelMessageSend(d.ID, j.URL)
-	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Color: 10181046, Image: &discordgo.MessageEmbedImage{URL: j.URL}, URL: j.URL})
-}
-
-func snek(s *discordgo.Session, d *discordgo.Channel) {
-	j := CatResponse{}
-	getJson("http://fur.im/snek/snek.php", &j)
-	//s.ChannelMessageSend(d.ID, j.URL)
-	s.ChannelMessageSendEmbed(d.ID, &discordgo.MessageEmbed{Color: 10181046, Image: &discordgo.MessageEmbedImage{URL: j.URL}, URL: j.URL})
 }
 
 func broom(s *discordgo.Session, d *discordgo.Channel) {
@@ -214,7 +200,19 @@ func help(s *discordgo.Session, user *discordgo.User, admin bool) {
 
 	channel, err := s.UserChannelCreate(user.ID)
 	if err != nil {
-		fmt.Errorf("could not create private channel", err)
+		_ = fmt.Errorf("could not create private channel", err)
 	}
-	s.ChannelMessageSendEmbed(channel.ID, &discordgo.MessageEmbed{Title: "Catbot Help", Fields: embedElements, Color: 10181046})
+	_, _ = s.ChannelMessageSendEmbed(channel.ID, &discordgo.MessageEmbed{Title: "Catbot Help", Fields: embedElements, Color: 10181046})
+}
+
+func join(s *discordgo.Session, user *discordgo.User) {
+	mChannel, err := s.UserChannelCreate(user.ID)
+	if err != nil {
+		return
+	}
+	sendJoinInfo(s, mChannel)
+}
+
+func joinAdm(s *discordgo.Session, channel *discordgo.Channel) {
+	sendJoinInfo(s, channel)
 }

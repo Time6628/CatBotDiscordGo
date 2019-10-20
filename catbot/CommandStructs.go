@@ -16,9 +16,6 @@ var (
 	muteCmd         = CommandBase{Prefix: "!mute",         Function: mute,         AdminReq: true,  Description: "Mute a user.",                                          Usage: "!mute @User"}
 	allMuteCmd      = CommandBase{Prefix: "!allmute",      Function: allMute,      AdminReq: true,  Description: "Mute a user in all of the current guild's channels.",   Usage: "!allmute <@User>"}
 	unMuteAllCmd    = CommandBase{Prefix: "!unmuteall",    Function: unMuteAll,    AdminReq: true,  Description: "Unmute a user in all of the current guild's channels.", Usage: "!allmute <@User>"}
-	donationHelpCmd = CommandBase{Prefix: "!donationhelp", Function: donationHelp, AdminReq: false, Description: "Shows the link to donation help.",                      Usage: "!donationhelp"}
-	catCmd          = CommandBase{Prefix: "!cat",          Function: cat,          AdminReq: false, Description: "You want, some cats?",                                  Usage: "!cat"}
-	snekCmd         = CommandBase{Prefix: "!snek", 	       Function: snek,         AdminReq: false, Description: "You want, some sneks?",                                 Usage: "!snek"}
 	broomCmd        = CommandBase{Prefix: "!broom",        Function: broom,        AdminReq: false, Description: "Stop being a broom.",                                   Usage: "!broom"}
 	rickCmd         = CommandBase{Prefix: "!rick",         Function: rick,         AdminReq: false, Description: "Secret.",                                               Usage: "!rick"}
 	vktrsCmd        = CommandBase{Prefix: "!vktrs",        Function: vktrs,        AdminReq: false, Description: "Secret.",                                               Usage: "!vktrs"}
@@ -26,5 +23,7 @@ var (
 	triviaCmd       = CommandBase{Prefix: "!trivia",       Function: triviaExec,   AdminReq: true,  Description: "Play some trivia.",                                     Usage: "!trivia"}
 	topicCmd        = CommandBase{Prefix: "!topic",        Function: topic,        AdminReq: false, Description: "Gets the channel topic.",                               Usage: "!topic"}
 	helpCmd         = CommandBase{Prefix: "!help",         Function: help,         AdminReq: false, Description: "See all commands in catbot.",                           Usage: "!help"}
-	cmds            = []CommandBase{removeFilterCmd, enableFilterCmd, infoCmd, catbotCmd, muteCmd, allMuteCmd, unMuteAllCmd, donationHelpCmd, catCmd, snekCmd, broomCmd, rickCmd, vktrsCmd, clearCmd, triviaCmd, topicCmd}
+	joinCmd         = CommandBase{Prefix: "!join",         Function: join,         AdminReq: false, Description: "See the guild joining message.",                        Usage: "!join"}
+	joinAdmCmd      = CommandBase{Prefix: "!joinadm",      Function: joinAdm,      AdminReq: true,  Description: "See the guild joining message.",                      Usage: "!joinadm"}
+	cmds            = []CommandBase{removeFilterCmd, enableFilterCmd, infoCmd, catbotCmd, muteCmd, allMuteCmd, unMuteAllCmd, broomCmd, rickCmd, vktrsCmd, clearCmd, triviaCmd, topicCmd, joinCmd}
 )
